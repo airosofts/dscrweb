@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/*
+  DSCR Calculator Pro — Brand Tokens
+  Source of truth for color, type, radii, shadow. Pair with public/brand-guidelines.html.
+*/
+@theme {
+  /* Ink (deep navy) — primary dark surface */
+  --color-ink: #0A1628;
+  --color-ink-mid: #162236;
+
+  /* Brass — signature accent */
+  --color-brass: #9B7B4E;
+  --color-brass-light: #B8976A;
+  --color-brass-pale: #D4B896;
+
+  /* Cream — light surface + body text on ink */
+  --color-cream: #FAF8F4;
+  --color-card: #FFFFFF;
+  --color-card-alt: #F5F2ED;
+
+  /* Neutrals */
+  --color-rule: #E8E4DD;
+  --color-muted: #A09888;
+  --color-slate: #5A6978;
+
+  /* Type — DM Sans (display/body) + DM Mono (tags) */
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-ink);
+  color: var(--color-cream);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Signature grid texture — fixed behind content */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(155, 123, 78, 0.025) 59px, rgba(155, 123, 78, 0.025) 60px),
+    repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(155, 123, 78, 0.025) 59px, rgba(155, 123, 78, 0.025) 60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Reusable button patterns */
+.btn-brass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--color-brass);
+  color: var(--color-cream);
+  padding: 13px 28px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.btn-brass:hover {
+  background: var(--color-brass-light);
+}
+
+.btn-outline-brass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--color-brass-pale);
+  padding: 13px 28px;
+  border: 1px solid rgba(155, 123, 78, 0.25);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-outline-brass:hover {
+  border-color: var(--color-brass);
+  color: var(--color-brass-light);
+}
+
+/* Form inputs */
+.input {
+  width: 100%;
+  background: var(--color-card-alt);
+  border: 1px solid var(--color-rule);
+  padding: 12px 14px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-ink);
+  transition: border-color 0.15s, background 0.15s;
+}
+.input::placeholder {
+  color: var(--color-muted);
+}
+.input:hover {
+  border-color: rgba(155, 123, 78, 0.35);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--color-brass);
+  background: var(--color-card);
+  box-shadow: 0 0 0 3px rgba(155, 123, 78, 0.08);
+}
+
+/* Keyframes */
+@keyframes badgeBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes pinRing {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
