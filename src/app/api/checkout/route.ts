@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 
 const VALID_PLANS = ["starter", "premium", "growth", "pro", "premium-plus"];
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin") || process.env.PUBLIC_SITE_URL || "https://dscrcalculator.pro";
 
   try {
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: "payment",
       customer_email: email,
       line_items: [
