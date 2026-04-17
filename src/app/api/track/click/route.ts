@@ -6,16 +6,18 @@ export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get("url");
 
   if (eid) {
-    // Update on first click only (idempotent)
-    await supabaseAdmin
-      .from("pipeline_emails")
-      .update({
-        status: "clicked",
-        clicked_at: new Date().toISOString(),
-      })
-      .eq("id", eid)
-      .is("clicked_at", null)
-      .catch(() => {});
+    try {
+      await supabaseAdmin
+        .from("pipeline_emails")
+        .update({
+          status: "clicked",
+          clicked_at: new Date().toISOString(),
+        })
+        .eq("id", eid)
+        .is("clicked_at", null);
+    } catch {
+      // silently fail — don't block redirect
+    }
   }
 
   // Redirect to original URL

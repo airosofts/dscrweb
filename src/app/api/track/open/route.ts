@@ -11,16 +11,18 @@ export async function GET(request: NextRequest) {
   const eid = request.nextUrl.searchParams.get("eid");
 
   if (eid) {
-    // Only update if not already opened (idempotent)
-    await supabaseAdmin
-      .from("pipeline_emails")
-      .update({
-        status: "opened",
-        opened_at: new Date().toISOString(),
-      })
-      .eq("id", eid)
-      .is("opened_at", null)
-      .catch(() => {});
+    try {
+      await supabaseAdmin
+        .from("pipeline_emails")
+        .update({
+          status: "opened",
+          opened_at: new Date().toISOString(),
+        })
+        .eq("id", eid)
+        .is("opened_at", null);
+    } catch {
+      // silently fail — don't block pixel response
+    }
   }
 
   return new Response(PIXEL, {
