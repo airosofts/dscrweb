@@ -6,7 +6,7 @@ if (!key) console.warn("[resend] RESEND_API_KEY is not set — emails will fail.
 export const resend = new Resend(key ?? "missing");
 
 export const FROM_ADDRESS =
-  process.env.RESEND_FROM_EMAIL || "DSCR Calculator Pro <dscr@ableman.co>";
+  process.env.RESEND_FROM_EMAIL || "DSCR Calculator Pro <noreply@dscrcalculator.pro>";
 
 export const ADMIN_NOTIFY_EMAIL =
   process.env.ADVERTISING_NOTIFY_EMAIL || "hamza@airosofts.com";

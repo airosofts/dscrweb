@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Reveal } from "@/components/RevealOnScroll";
+import { PhoneMockup } from "@/components/PhoneMockup";
 import { AdvertiseForm } from "@/components/AdvertiseForm";
 
 export const metadata: Metadata = {
@@ -39,7 +39,7 @@ function Hero() {
             "repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(155,123,78,0.03) 59px,rgba(155,123,78,0.03) 60px),repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(155,123,78,0.03) 59px,rgba(155,123,78,0.03) 60px)",
         }}
       />
-      <div className="relative z-[2] mx-auto grid max-w-[1040px] grid-cols-[1fr_360px] items-center gap-16 px-6 max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:text-center">
+      <div className="relative z-[2] mx-auto grid max-w-[1040px] grid-cols-[1fr_380px] items-center gap-16 px-6 max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:text-center">
         <Reveal>
           <div className="flex flex-col max-[900px]:items-center">
             <Kicker>Advertising</Kicker>
@@ -59,57 +59,18 @@ function Hero() {
           </div>
         </Reveal>
 
-        <Reveal delay={120} className="max-[900px]:-order-1">
+        <Reveal delay={120}>
           <div className="relative flex justify-center">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(155,123,78,0.08)_0%,transparent_65%)]"
-            />
-            <div className="relative" style={{ width: 280, filter: "drop-shadow(0 28px 48px rgba(0,0,0,0.5))" }}>
-              <div
-                className="relative rounded-[52px] p-[3px]"
-                style={{
-                  background: "linear-gradient(145deg,#3a3a3f 0%,#1a1a1d 25%,#2a2a2e 50%,#121214 75%,#2e2e32 100%)",
-                  boxShadow: "0 0 0 1px rgba(155,123,78,0.1),inset 0 1px 0 rgba(255,255,255,0.06)",
-                }}
-              >
-                <div
-                  className="relative rounded-[49px] p-[7px]"
-                  style={{ background: "linear-gradient(145deg,#0a0a0b,#1c1c1f,#0a0a0b)" }}
-                >
-                  <div
-                    className="relative overflow-hidden rounded-[42px] bg-cream"
-                    style={{ aspectRatio: "9/19.5" }}
-                  >
-                    <Image src="/2.png" alt="DSCR Calculator Pro app" fill sizes="280px" className="object-cover object-top" priority />
-                    <div
-                      className="absolute left-1/2 top-[8px] z-20 h-[25px] w-[88px] -translate-x-1/2 rounded-full"
-                      style={{ background: "#000", boxShadow: "inset 0 0 0 1px rgba(40,40,44,0.9)" }}
-                    >
-                      <span className="absolute right-2.5 top-1/2 h-[7px] w-[7px] -translate-y-1/2 rounded-full" style={{ background: "radial-gradient(circle at 35% 35%,#2a2f38,#000)" }} />
-                    </div>
-                    <div className="absolute bottom-1.5 left-1/2 z-20 h-1 w-20 -translate-x-1/2 rounded-full bg-ink/20" />
-                  </div>
-                </div>
-              </div>
-              {[
-                "absolute -left-[3px] top-[90px] h-7 w-[3px] rounded-l-sm",
-                "absolute -left-[3px] top-[132px] h-11 w-[3px] rounded-l-sm",
-                "absolute -left-[3px] top-[188px] h-11 w-[3px] rounded-l-sm",
-                "absolute -right-[3px] top-[148px] h-14 w-[3px] rounded-r-sm",
-              ].map((cls, i) => (
-                <span key={i} aria-hidden className={cls} style={{ background: i < 3 ? "linear-gradient(90deg,#1a1a1d,#3a3a3f)" : "linear-gradient(270deg,#1a1a1d,#3a3a3f)" }} />
-              ))}
-            </div>
+            <PhoneMockup />
 
             {/* Floating badges */}
-            <div className="absolute -right-3 top-4 border border-rule border-l-[3px] border-l-brass bg-card px-4 py-3 shadow-[0_6px_20px_rgba(10,22,40,0.12)] [animation:badgeBob_4s_ease-in-out_infinite]">
-              <div className="text-[20px] font-extrabold leading-none tracking-[-0.02em] text-ink">50K+</div>
-              <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-brass">Monthly Sessions</div>
+            <div className="absolute -right-3 top-4 z-30 border border-rule border-l-[3px] border-l-brass bg-card px-4 py-3 shadow-[0_6px_20px_rgba(10,22,40,0.12)] [animation:badgeBob_4s_ease-in-out_infinite]">
+              <div className="text-[14px] font-bold leading-none text-ink">In-App Ads</div>
+              <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-brass">Premium Placement</div>
             </div>
-            <div className="absolute -left-3 bottom-14 border border-rule border-l-[3px] border-l-brass bg-card px-4 py-3 shadow-[0_6px_20px_rgba(10,22,40,0.12)] [animation:badgeBob_4s_ease-in-out_infinite_1.5s]">
-              <div className="text-[20px] font-extrabold leading-none tracking-[-0.02em] text-ink">4.8<span className="text-brass">★</span></div>
-              <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-brass">App Store</div>
+            <div className="absolute -left-3 bottom-14 z-30 border border-rule border-l-[3px] border-l-brass bg-card px-4 py-3 shadow-[0_6px_20px_rgba(10,22,40,0.12)] [animation:badgeBob_4s_ease-in-out_infinite_1.5s]">
+              <div className="text-[14px] font-bold leading-none text-ink">iOS App</div>
+              <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-brass">Live on App Store</div>
             </div>
           </div>
         </Reveal>
@@ -118,25 +79,23 @@ function Hero() {
   );
 }
 
-/* ─────────────────────────── STATS BAR ─────────────────────────── */
-const STATS = [
-  { value: "50K", suffix: "+", label: "Monthly Sessions" },
-  { value: "3.2", suffix: "min", label: "Avg. Session" },
-  { value: "92", suffix: "%", label: "Active Investors" },
-  { value: "48", suffix: "", label: "US States" },
+/* ─────────────────────────── VALUE BAR ─────────────────────────── */
+const VALUE_POINTS = [
+  { label: "High-Intent Users", desc: "Investors actively running deal numbers" },
+  { label: "Premium Placement", desc: "Banner ads & full-screen pop-ups" },
+  { label: "Nationwide Reach", desc: "Available across all US states" },
+  { label: "Self-Serve Setup", desc: "Stripe checkout, live in 24 hours" },
 ];
 
 function StatsBar() {
   return (
-    <div className="border-b border-rule bg-card shadow-sm">
+    <div className="border-b border-rule bg-card">
       <div className="mx-auto grid max-w-[1040px] grid-cols-4 divide-x divide-rule px-6 max-[600px]:grid-cols-2 max-[600px]:divide-x-0">
-        {STATS.map((s, i) => (
+        {VALUE_POINTS.map((s, i) => (
           <Reveal key={s.label} delay={i * 80}>
-            <div className="px-6 py-10 text-center max-[600px]:py-7">
-              <div className="text-[36px] font-extrabold leading-none tracking-[-0.02em] text-ink max-[600px]:text-[28px]">
-                {s.value}<span className="font-medium text-brass">{s.suffix}</span>
-              </div>
-              <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted">{s.label}</div>
+            <div className="px-5 py-8 text-center max-[600px]:py-6">
+              <div className="text-[14px] font-bold text-ink">{s.label}</div>
+              <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted">{s.desc}</div>
             </div>
           </Reveal>
         ))}
@@ -332,36 +291,38 @@ function AudienceSection() {
 /* ─────────────────────────── APPLY (FORM) ─────────────────────────── */
 function ApplySection() {
   return (
-    <section id="apply" className="relative overflow-hidden bg-cream py-[88px] max-[600px]:py-16">
-      <div className="mx-auto grid max-w-[1040px] grid-cols-[360px_1fr] gap-16 px-6 max-[900px]:grid-cols-1 max-[900px]:gap-12">
+    <section id="apply" className="bg-cream py-[88px] max-[600px]:py-16">
+      <div className="mx-auto max-w-[900px] px-6">
+        {/* Header — centered */}
         <Reveal>
-          <div className="sticky top-28">
-            <Kicker>Apply</Kicker>
+          <div className="mb-12 text-center">
+            <Kicker className="justify-center">Apply</Kicker>
             <h2 className="mt-4 text-[34px] font-extrabold leading-[1.15] tracking-[-0.01em] text-ink max-[600px]:text-[26px]">
               Tell us about your campaign.
             </h2>
-            <p className="mt-4 text-[15px] leading-[1.7] text-slate">
+            <p className="mx-auto mt-4 max-w-[520px] text-[15px] leading-[1.7] text-slate">
               Share a few details about your brand and what you&rsquo;re trying to reach. Our
               team matches the right placement and sends you a tailored plan — usually within a
               minute for pricing, and 3–4 business days for a personal follow-up.
             </p>
-            <ul className="mt-7 flex flex-col gap-3">
+            <div className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
               {[
-                "Instant pricing email with tier summary",
-                "Human review within 3–4 business days",
-                "No contracts · Self-serve Stripe checkout",
+                "Instant pricing email",
+                "Review in 3–4 business days",
+                "No contracts",
               ].map((line) => (
-                <li key={line} className="flex items-baseline gap-3 text-[14px] text-slate">
-                  <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-brass" />
+                <span key={line} className="flex items-center gap-2 text-[13px] text-slate">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brass" />
                   {line}
-                </li>
+                </span>
               ))}
-            </ul>
+            </div>
           </div>
         </Reveal>
 
-        <Reveal delay={120}>
-          <div className="border border-rule border-l-[4px] border-l-brass bg-card p-8 max-[600px]:p-6">
+        {/* Form — centered card */}
+        <Reveal delay={100}>
+          <div className="border border-rule border-l-[3px] border-l-brass bg-card p-8 max-[600px]:p-5">
             <AdvertiseForm />
           </div>
         </Reveal>

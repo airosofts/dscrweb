@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export function PhoneMockup() {
   return (
-    <div className="relative flex justify-center max-[900px]:-order-1">
+    <div className="relative flex justify-center">
       {/* Ambient glow */}
       <div
         aria-hidden

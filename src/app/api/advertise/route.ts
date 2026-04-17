@@ -1,40 +1,22 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_ADDRESS, ADMIN_NOTIFY_EMAIL, PUBLIC_SITE_URL } from "@/lib/resend";
+import { resend, FROM_ADDRESS, ADMIN_NOTIFY_EMAIL } from "@/lib/resend";
 import {
   buildAdminNotification,
-  buildApplicantFollowup,
   type AdvertisingRequestPayload,
 } from "@/lib/email-templates";
 
-const AD_TYPES = ["banner", "sponsored_content", "email_campaign", "other"];
+const AD_TYPES = ["banner", "popup"];
 const PLACEMENTS = ["homepage", "calculator_page", "results_section", "other"];
 const BUDGET_RANGES = ["under_500", "500_1000", "1000_5000", "5000_plus", "custom"];
-
-type Body = {
-  company_name?: unknown;
-  contact_person?: unknown;
-  email?: unknown;
-  phone?: unknown;
-  website?: unknown;
-  ad_type?: unknown;
-  ad_description?: unknown;
-  target_audience?: unknown;
-  preferred_placement?: unknown;
-  budget_range?: unknown;
-  budget_custom?: unknown;
-  start_date?: unknown;
-  duration_months?: unknown;
-  additional_notes?: unknown;
-};
 
 const str = (v: unknown, max = 1000) =>
   typeof v === "string" ? v.trim().slice(0, max) : "";
 
 export async function POST(request: NextRequest) {
-  let raw: Body;
+  let raw: Record<string, unknown>;
   try {
-    raw = (await request.json()) as Body;
+    raw = (await request.json()) as Record<string, unknown>;
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -90,22 +72,10 @@ export async function POST(request: NextRequest) {
   const { data: inserted, error: insertError } = await supabaseAdmin
     .from("advertising_requests")
     .insert({
-      company_name,
-      contact_person,
-      email,
-      phone,
-      website,
-      ad_type,
-      ad_description,
-      target_audience,
-      preferred_placement,
-      budget_range,
-      budget_custom,
-      start_date,
-      duration_months,
-      additional_notes,
-      user_ip,
-      user_agent,
+      company_name, contact_person, email, phone, website,
+      ad_type, ad_description, target_audience, preferred_placement,
+      budget_range, budget_custom, start_date, duration_months,
+      additional_notes, user_ip, user_agent,
     })
     .select()
     .single();
@@ -134,8 +104,6 @@ export async function POST(request: NextRequest) {
     createdAt: inserted.created_at,
   };
 
-  const notifyUpdate: Record<string, unknown> = {};
-
   // ── 2. Send immediate admin notification ────────────────────────────────
   try {
     const admin = buildAdminNotification(payload);
@@ -146,38 +114,63 @@ export async function POST(request: NextRequest) {
       subject: admin.subject,
       html: admin.html,
     });
-    notifyUpdate.notification_sent_at = new Date().toISOString();
-  } catch (err) {
-    console.error("[advertise] admin notification failed:", err);
-    // Continue — the DB row is saved so we can retry manually.
-  }
-
-  // ── 3. Schedule applicant follow-up (+1 minute) ─────────────────────────
-  try {
-    const scheduledAt = new Date(Date.now() + 60 * 1000).toISOString();
-    const pricingUrl = `${PUBLIC_SITE_URL}/pricing?ref=advertise&rid=${encodeURIComponent(inserted.id)}`;
-    const followup = buildApplicantFollowup(payload, pricingUrl);
-
-    const result = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: email,
-      replyTo: "hamza@airosofts.com",
-      subject: followup.subject,
-      html: followup.html,
-      scheduledAt,
-    });
-
-    notifyUpdate.followup_scheduled_at = scheduledAt;
-    notifyUpdate.followup_resend_id = result.data?.id ?? null;
-  } catch (err) {
-    console.error("[advertise] follow-up scheduling failed:", err);
-  }
-
-  if (Object.keys(notifyUpdate).length > 0) {
     await supabaseAdmin
       .from("advertising_requests")
-      .update(notifyUpdate)
+      .update({ notification_sent_at: new Date().toISOString() })
       .eq("id", inserted.id);
+  } catch (err) {
+    console.error("[advertise] admin notification failed:", err);
+  }
+
+  // ── 3. Create pipeline entries (pricing + followup) ─────────────────────
+  try {
+    // Fetch pipeline settings
+    const { data: settings } = await supabaseAdmin
+      .from("pipeline_settings")
+      .select("*")
+      .eq("id", 1)
+      .single();
+
+    const pricingDelay = settings?.pricing_email_delay_minutes ?? 1;
+    const followupDelay = settings?.followup_delay_minutes ?? 1440;
+    const pricingEnabled = settings?.pricing_email_enabled ?? true;
+    const followupEnabled = settings?.followup_email_enabled ?? true;
+
+    const now = Date.now();
+
+    if (pricingEnabled) {
+      await supabaseAdmin.from("pipeline_emails").insert({
+        advertising_request_id: inserted.id,
+        email_type: "pricing",
+        to_email: email,
+        to_name: contact_person,
+        scheduled_for: new Date(now + pricingDelay * 60_000).toISOString(),
+        status: "scheduled",
+      });
+    }
+
+    if (followupEnabled) {
+      // Followup delay is relative to the pricing email's scheduled time
+      const pricingSendTime = now + pricingDelay * 60_000;
+      await supabaseAdmin.from("pipeline_emails").insert({
+        advertising_request_id: inserted.id,
+        email_type: "followup",
+        to_email: email,
+        to_name: contact_person,
+        scheduled_for: new Date(pricingSendTime + followupDelay * 60_000).toISOString(),
+        status: "scheduled",
+      });
+    }
+  } catch (err) {
+    console.error("[advertise] pipeline creation failed:", err);
+  }
+
+  // ── 4. Process any due pipeline emails while we're here ──────────────
+  try {
+    const processUrl = new URL("/api/pipeline/process", request.url);
+    fetch(processUrl.toString()).catch(() => {});
+  } catch {
+    // fire-and-forget
   }
 
   return Response.json({ ok: true, id: inserted.id }, { status: 201 });

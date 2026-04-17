@@ -17,7 +17,7 @@ create table if not exists public.advertising_requests (
   website               text,
 
   -- Ad details
-  ad_type               text         not null check (ad_type in ('banner','sponsored_content','email_campaign','other')),
+  ad_type               text         not null check (ad_type in ('banner','popup')),
   ad_description        text         not null,
   target_audience       text,
   preferred_placement   text         not null check (preferred_placement in ('homepage','calculator_page','results_section','other')),

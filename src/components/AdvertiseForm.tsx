@@ -4,9 +4,7 @@ import { useState } from "react";
 
 const AD_TYPES = [
   { value: "banner", label: "Banner Ad" },
-  { value: "sponsored_content", label: "Sponsored Content" },
-  { value: "email_campaign", label: "Email Campaign" },
-  { value: "other", label: "Other" },
+  { value: "popup", label: "Popup Ad" },
 ];
 
 const PLACEMENTS = [
