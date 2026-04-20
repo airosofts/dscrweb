@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     const endsAt = new Date();
     endsAt.setMonth(endsAt.getMonth() + durationMonths);
 
-    // Update subscription
+    // Update subscription (token was generated at checkout creation time)
     await supabaseAdmin
       .from("ad_subscriptions")
       .update({

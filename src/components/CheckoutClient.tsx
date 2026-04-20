@@ -51,6 +51,8 @@ export function CheckoutClient() {
   const [company, setCompany] = useState("");
   const [phone, setPhone] = useState("");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+  const [submissionToken, setSubmissionToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -90,6 +92,8 @@ export function CheckoutClient() {
       if (!res.ok) throw new Error(data?.error ?? "Failed to create payment");
 
       setClientSecret(data.clientSecret);
+      setSubscriptionId(data.subscriptionId);
+      setSubmissionToken(data.submissionToken);
       setStep("payment");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -263,7 +267,7 @@ export function CheckoutClient() {
         </Elements>
       )}
 
-      {/* Step 3: Success */}
+      {/* Step 3: Success — prompt to submit creative now */}
       {step === "success" && (
         <div className="border border-rule border-l-[3px] border-l-brass bg-card p-8">
           <div className="mb-6 flex justify-center">
@@ -278,30 +282,31 @@ export function CheckoutClient() {
               Payment Confirmed
             </div>
             <h2 className="mb-3 text-[22px] font-extrabold tracking-[-0.01em] text-ink">
-              You&apos;re all set.
+              You&apos;re all set, {(name || email).split(" ")[0]}.
             </h2>
             <p className="mb-6 text-[14px] leading-[1.65] text-slate">
-              We&apos;ll send an email to <span className="font-mono text-ink">{email}</span> within
-              24 hours with a link to submit your ad creative.
+              One last step — submit your ad creative now so we can get it live within 1–2 business days.
             </p>
 
-            <div className="mx-auto max-w-[320px] space-y-3 text-left">
-              {[
-                ["01", "Check your email for the creative submission link"],
-                ["02", "Upload your banner or pop-up content"],
-                ["03", "We review and approve within 1–2 days"],
-                ["04", "Your ad goes live nationwide"],
-              ].map(([num, text]) => (
-                <div key={num} className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-rule bg-card-alt font-mono text-[10px] font-bold text-brass">
-                    {num}
-                  </span>
-                  <span className="text-[13px] text-slate">{text}</span>
-                </div>
-              ))}
-            </div>
+            {subscriptionId && submissionToken ? (
+              <a
+                href={`/submit-creative?token=${encodeURIComponent(submissionToken)}&sid=${encodeURIComponent(subscriptionId)}`}
+                className="btn-brass inline-flex py-3.5"
+              >
+                Submit Ad Creative →
+              </a>
+            ) : (
+              <div className="text-[13px] text-muted">
+                Redirecting to creative submission…
+              </div>
+            )}
 
-            <div className="mt-8 flex justify-center gap-3">
+            <p className="mt-6 text-[12px] text-muted">
+              Not ready? A reminder link will be emailed to{" "}
+              <span className="font-mono text-ink">{email}</span> if not submitted within 24 hours.
+            </p>
+
+            <div className="mt-8 flex justify-center gap-3 border-t border-rule pt-6">
               <a href="/" className="btn-outline-brass">Back to Home</a>
               <a href="/advertise" className="btn-outline-brass">Advertise</a>
             </div>

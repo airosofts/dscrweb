@@ -50,6 +50,9 @@ export async function POST(request: NextRequest) {
   if (!priceCents)
     return Response.json({ error: "Price not available for this geo" }, { status: 400 });
 
+  // Generate submission token upfront — used after payment to gate the creative form
+  const submissionToken = crypto.randomUUID();
+
   // Create subscription record
   const { data: sub, error: subErr } = await supabaseAdmin
     .from("ad_subscriptions")
@@ -62,6 +65,7 @@ export async function POST(request: NextRequest) {
       geo_targeting: geo,
       price_cents: priceCents,
       status: "pending",
+      submission_token: submissionToken,
     })
     .select()
     .single();
@@ -95,6 +99,7 @@ export async function POST(request: NextRequest) {
     return Response.json({
       clientSecret: paymentIntent.client_secret,
       subscriptionId: sub.id,
+      submissionToken,
       plan: {
         name: plan.name,
         placement: plan.placement,
