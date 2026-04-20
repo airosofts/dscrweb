@@ -189,9 +189,6 @@ const SECTIONS = [
           advertising email thread) at any time. Under the GDPR and CCPA, you have the right to
           access, correct, or delete your data.
         </p>
-        <p className="mt-4">
-          Email <a href="mailto:privacy@dscrcalculator.pro" className="font-semibold text-brass hover:text-brass-light">privacy@dscrcalculator.pro</a> and we&apos;ll confirm receipt within 3–4 business days.
-        </p>
       </>
     ),
   },
