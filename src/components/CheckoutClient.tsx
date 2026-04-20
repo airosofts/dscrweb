@@ -38,6 +38,7 @@ const PRICES: Record<string, Record<string, number>> = {
 
 export function CheckoutClient() {
   const params = useSearchParams();
+  const router = useRouter();
   const planId = params.get("plan") ?? "";
   const geo = params.get("geo") ?? "national";
 
@@ -256,7 +257,15 @@ export function CheckoutClient() {
           }}
         >
           <PaymentForm
-            onSuccess={() => setStep("success")}
+            onSuccess={() => {
+              if (subscriptionId && submissionToken) {
+                router.replace(
+                  `/submit-creative?token=${encodeURIComponent(submissionToken)}&sid=${encodeURIComponent(subscriptionId)}`,
+                );
+              } else {
+                setStep("success");
+              }
+            }}
             onBack={() => {
               setStep("details");
               setClientSecret(null);
@@ -335,7 +344,6 @@ function PaymentForm({
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
