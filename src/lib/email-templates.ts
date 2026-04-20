@@ -89,19 +89,8 @@ function shell({
 
       <!-- masthead -->
       <tr><td style="padding:26px 32px 22px;border-bottom:1px solid #E8E4DD;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td style="vertical-align:middle;">
-            <div style="font-family:'DM Mono',Menlo,monospace;font-size:10px;font-weight:500;letter-spacing:0.18em;text-transform:uppercase;color:#9B7B4E;">DSCR Calculator Pro</div>
-            <div style="margin-top:4px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#A09888;">Real Estate Investment Tools</div>
-          </td>
-          <td align="right" style="vertical-align:middle;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-              <td style="width:28px;height:28px;background:#FAF8F4;border:1px solid #E8E4DD;border-left:3px solid #9B7B4E;text-align:center;vertical-align:middle;">
-                <span style="font-family:'DM Sans',Helvetica,Arial,sans-serif;font-weight:800;font-size:12px;color:#0A1628;">D</span>
-              </td>
-            </tr></table>
-          </td>
-        </tr></table>
+        <div style="font-family:'DM Mono',Menlo,monospace;font-size:10px;font-weight:500;letter-spacing:0.18em;text-transform:uppercase;color:#9B7B4E;">DSCR Calculator Pro</div>
+        <div style="margin-top:4px;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#A09888;">Real Estate Investment Tools</div>
       </td></tr>
 
       <!-- body -->

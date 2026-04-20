@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 /* ─────────────────────────── Data ─────────────────────────── */
 
@@ -109,55 +110,11 @@ export function PricingClient() {
     setSelectedId(selectedId === id ? null : id);
   };
 
-  // Checkout state
-  const [checkoutEmail, setCheckoutEmail] = useState("");
-  const [checkoutCompany, setCheckoutCompany] = useState("");
-  const [checkoutName, setCheckoutName] = useState("");
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [showCheckoutForm, setShowCheckoutForm] = useState(false);
-  const emailRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!selected) return;
-
-    // If we haven't collected email yet, show the form
-    if (!showCheckoutForm) {
-      setShowCheckoutForm(true);
-      setTimeout(() => emailRef.current?.focus(), 100);
-      return;
-    }
-
-    // Validate
-    if (!checkoutEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkoutEmail.trim())) {
-      setCheckoutError("Please enter a valid email.");
-      return;
-    }
-
-    setCheckoutError(null);
-    setCheckoutLoading(true);
-
-    try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan_id: selected.id,
-          geo,
-          email: checkoutEmail.trim(),
-          company_name: checkoutCompany.trim() || null,
-          contact_name: checkoutName.trim() || null,
-        }),
-      });
-      const data: { url?: string; error?: string } = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Checkout failed");
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : "Something went wrong");
-      setCheckoutLoading(false);
-    }
+    router.push(`/checkout?plan=${selected.id}&geo=${geo}`);
   };
 
   return (
@@ -391,47 +348,6 @@ export function PricingClient() {
           (selected && !comingSoon ? "translate-y-0" : "translate-y-full")
         }
       >
-        {/* Email collection form — slides in above checkout */}
-        {showCheckoutForm && selected && (
-          <div className="border-b border-rule bg-card-alt px-6 py-4">
-            <div className="mx-auto max-w-[720px]">
-              <div className="mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-brass">
-                Almost there — enter your details
-              </div>
-              <div className="flex flex-wrap gap-3 max-[640px]:flex-col">
-                <input
-                  ref={emailRef}
-                  type="email"
-                  placeholder="Email address *"
-                  value={checkoutEmail}
-                  onChange={(e) => setCheckoutEmail(e.target.value)}
-                  disabled={checkoutLoading}
-                  className="input min-w-[200px] flex-1"
-                />
-                <input
-                  type="text"
-                  placeholder="Your name"
-                  value={checkoutName}
-                  onChange={(e) => setCheckoutName(e.target.value)}
-                  disabled={checkoutLoading}
-                  className="input min-w-[160px] flex-1"
-                />
-                <input
-                  type="text"
-                  placeholder="Company"
-                  value={checkoutCompany}
-                  onChange={(e) => setCheckoutCompany(e.target.value)}
-                  disabled={checkoutLoading}
-                  className="input min-w-[160px] flex-1"
-                />
-              </div>
-              {checkoutError && (
-                <div className="mt-2 text-[12px] text-red-600">{checkoutError}</div>
-              )}
-            </div>
-          </div>
-        )}
-
         <div className="mx-auto flex max-w-[720px] items-center justify-between gap-5 px-6 py-4 max-[640px]:flex-col max-[640px]:gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-4 max-[640px]:w-full max-[640px]:justify-between">
             <div className="flex min-w-0 flex-col">
@@ -454,26 +370,12 @@ export function PricingClient() {
           </div>
           <button
             onClick={handleCheckout}
-            disabled={checkoutLoading}
-            className="flex items-center gap-2 whitespace-nowrap bg-ink px-9 py-3.5 text-[13px] font-bold uppercase tracking-[0.08em] text-cream transition-all hover:bg-ink-mid hover:-translate-y-px disabled:opacity-60 max-[640px]:w-full max-[640px]:justify-center"
+            className="flex items-center gap-2 whitespace-nowrap bg-ink px-9 py-3.5 text-[13px] font-bold uppercase tracking-[0.08em] text-cream transition-all hover:bg-ink-mid hover:-translate-y-px max-[640px]:w-full max-[640px]:justify-center"
           >
-            {checkoutLoading ? (
-              "Redirecting to Stripe…"
-            ) : showCheckoutForm ? (
-              <>
-                Pay with Stripe
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                  <rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" />
-                </svg>
-              </>
-            ) : (
-              <>
-                Checkout
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                  <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-                </svg>
-              </>
-            )}
+            Checkout
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+              <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+            </svg>
           </button>
         </div>
         <div className="flex items-center justify-center gap-1.5 pb-3 font-mono text-[9px] tracking-[0.06em] text-muted opacity-50">

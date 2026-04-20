@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     return Response.json({ error: "Valid email required" }, { status: 400 });
 
-  // Fetch plan from DB
+  // Fetch plan
   const { data: plan, error: planErr } = await supabaseAdmin
     .from("ad_plans")
     .select("*")
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   if (!priceCents)
     return Response.json({ error: "Price not available for this geo" }, { status: 400 });
 
-  // Create subscription record (pending)
+  // Create subscription record
   const { data: sub, error: subErr } = await supabaseAdmin
     .from("ad_subscriptions")
     .insert({
@@ -71,44 +71,38 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Could not create subscription" }, { status: 500 });
   }
 
-  // Create Stripe Checkout Session
-  const origin = request.headers.get("origin") || process.env.PUBLIC_SITE_URL || "https://dscrcalculator.pro";
-
+  // Create PaymentIntent
   try {
-    const session = await getStripe().checkout.sessions.create({
-      mode: "payment",
-      customer_email: email,
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            unit_amount: priceCents,
-            product_data: {
-              name: `${plan.name} — ${plan.placement}`,
-              description: `${plan.duration_months} month${plan.duration_months > 1 ? "s" : ""} · ${geo.charAt(0).toUpperCase() + geo.slice(1)} targeting`,
-            },
-          },
-          quantity: 1,
-        },
-      ],
+    const stripe = getStripe();
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: priceCents,
+      currency: "usd",
       metadata: {
         subscription_id: sub.id,
         plan_id: planId,
         geo,
       },
-      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/pricing?tier=${planId}&geo=${geo}`,
+      receipt_email: email,
+      description: `${plan.name} — ${plan.placement} (${plan.duration_months}mo, ${geo})`,
     });
 
-    // Store checkout ID
+    // Store payment intent ID
     await supabaseAdmin
       .from("ad_subscriptions")
-      .update({ stripe_checkout_id: session.id })
+      .update({ stripe_payment_intent: paymentIntent.id })
       .eq("id", sub.id);
 
-    return Response.json({ url: session.url });
+    return Response.json({
+      clientSecret: paymentIntent.client_secret,
+      subscriptionId: sub.id,
+      plan: {
+        name: plan.name,
+        placement: plan.placement,
+        duration_months: plan.duration_months,
+      },
+    });
   } catch (err) {
     console.error("[checkout] stripe error:", err);
-    return Response.json({ error: "Could not create checkout session" }, { status: 500 });
+    return Response.json({ error: "Could not create payment" }, { status: 500 });
   }
 }

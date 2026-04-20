@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_ADDRESS, ADMIN_NOTIFY_EMAIL } from "@/lib/resend";
+import { resend, FROM_ADDRESS, ADMIN_NOTIFY_EMAIL, PUBLIC_SITE_URL } from "@/lib/resend";
 import {
   buildAdminNotification,
+  buildPricingEmail,
   type AdvertisingRequestPayload,
 } from "@/lib/email-templates";
 
@@ -122,9 +123,8 @@ export async function POST(request: NextRequest) {
     console.error("[advertise] admin notification failed:", err);
   }
 
-  // ── 3. Create pipeline entries (pricing + followup) ─────────────────────
+  // ── 3. Create pipeline entries + schedule via Resend ─────────────────
   try {
-    // Fetch pipeline settings
     const { data: settings } = await supabaseAdmin
       .from("pipeline_settings")
       .select("*")
@@ -137,40 +137,71 @@ export async function POST(request: NextRequest) {
     const followupEnabled = settings?.followup_email_enabled ?? true;
 
     const now = Date.now();
+    const pricingScheduledFor = new Date(now + pricingDelay * 60_000);
+    const followupScheduledFor = new Date(now + (pricingDelay + followupDelay) * 60_000);
 
+    // ── PRICING EMAIL: schedule via Resend scheduledAt ────────────
     if (pricingEnabled) {
-      await supabaseAdmin.from("pipeline_emails").insert({
-        advertising_request_id: inserted.id,
-        email_type: "pricing",
-        to_email: email,
-        to_name: contact_person,
-        scheduled_for: new Date(now + pricingDelay * 60_000).toISOString(),
-        status: "scheduled",
-      });
+      // Create pipeline record first to get ID for tracking
+      const { data: pipelineRow } = await supabaseAdmin
+        .from("pipeline_emails")
+        .insert({
+          advertising_request_id: inserted.id,
+          email_type: "pricing",
+          to_email: email,
+          to_name: contact_person,
+          scheduled_for: pricingScheduledFor.toISOString(),
+          status: "scheduled",
+        })
+        .select()
+        .single();
+
+      if (pipelineRow) {
+        const pricingUrl = `${PUBLIC_SITE_URL}/pricing?ref=pipeline&rid=${encodeURIComponent(inserted.id)}`;
+        const trackingOpts = { baseUrl: PUBLIC_SITE_URL, pipelineEmailId: pipelineRow.id };
+        const emailData = buildPricingEmail(payload, pricingUrl, trackingOpts);
+
+        try {
+          const result = await resend.emails.send({
+            from: FROM_ADDRESS,
+            to: email,
+            replyTo: "hamza@airosofts.com",
+            subject: emailData.subject,
+            html: emailData.html,
+            scheduledAt: pricingScheduledFor.toISOString(),
+          });
+
+          await supabaseAdmin
+            .from("pipeline_emails")
+            .update({
+              status: "sent",
+              sent_at: new Date().toISOString(),
+              resend_email_id: result.data?.id ?? null,
+            })
+            .eq("id", pipelineRow.id);
+        } catch (err) {
+          console.error("[advertise] pricing email schedule failed:", err);
+          await supabaseAdmin
+            .from("pipeline_emails")
+            .update({ status: "failed", skip_reason: String(err) })
+            .eq("id", pipelineRow.id);
+        }
+      }
     }
 
+    // ── FOLLOWUP EMAIL: stays in pipeline for cron (needs open-check) ─
     if (followupEnabled) {
-      // Followup delay is relative to the pricing email's scheduled time
-      const pricingSendTime = now + pricingDelay * 60_000;
       await supabaseAdmin.from("pipeline_emails").insert({
         advertising_request_id: inserted.id,
         email_type: "followup",
         to_email: email,
         to_name: contact_person,
-        scheduled_for: new Date(pricingSendTime + followupDelay * 60_000).toISOString(),
+        scheduled_for: followupScheduledFor.toISOString(),
         status: "scheduled",
       });
     }
   } catch (err) {
     console.error("[advertise] pipeline creation failed:", err);
-  }
-
-  // ── 4. Process any due pipeline emails while we're here ──────────────
-  try {
-    const processUrl = new URL("/api/pipeline/process", request.url);
-    fetch(processUrl.toString()).catch(() => {});
-  } catch {
-    // fire-and-forget
   }
 
   return Response.json({ ok: true, id: inserted.id }, { status: 201 });

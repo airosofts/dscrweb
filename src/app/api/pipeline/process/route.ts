@@ -10,20 +10,22 @@ import {
  * Pipeline processor — call this on a schedule (every 1 minute via cron/Vercel cron).
  * GET /api/pipeline/process
  *
- * Finds all pipeline_emails where scheduled_for <= now AND status = 'scheduled',
- * sends them, and updates status.
+ * Finds followup emails where scheduled_for <= now AND status = 'scheduled'.
+ * Pricing emails are sent via Resend scheduledAt at submission time — this
+ * processor only handles followups (which need the open-check condition).
  */
 export async function GET() {
   const now = new Date().toISOString();
 
-  // Fetch due emails
+  // Fetch due followup emails only (pricing is handled by Resend scheduledAt)
   const { data: dueEmails, error } = await supabaseAdmin
     .from("pipeline_emails")
     .select("*, advertising_requests(*)")
     .eq("status", "scheduled")
+    .eq("email_type", "followup")
     .lte("scheduled_for", now)
     .order("scheduled_for", { ascending: true })
-    .limit(50); // batch limit
+    .limit(50);
 
   if (error) {
     console.error("[pipeline] fetch failed:", error);
