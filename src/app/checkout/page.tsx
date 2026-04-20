@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { CheckoutClient } from "@/components/CheckoutClient";
@@ -36,7 +37,9 @@ export default function CheckoutPage() {
       </section>
       <section className="bg-cream py-16 max-[600px]:py-10">
         <div className="mx-auto max-w-[520px] px-6">
-          <CheckoutClient />
+          <Suspense fallback={<div className="py-20 text-center text-sm text-muted">Loading checkout…</div>}>
+            <CheckoutClient />
+          </Suspense>
         </div>
       </section>
       <Footer />
