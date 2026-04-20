@@ -61,7 +61,9 @@ export async function POST(request: NextRequest) {
     const endsAt = new Date();
     endsAt.setMonth(endsAt.getMonth() + durationMonths);
 
-    // Update subscription (token was generated at checkout creation time)
+    // Update subscription (token was generated at checkout creation time).
+    // Guard on status=pending so we don't overwrite a later state if verify
+    // already self-healed or the user has already submitted creative.
     await supabaseAdmin
       .from("ad_subscriptions")
       .update({
@@ -71,7 +73,8 @@ export async function POST(request: NextRequest) {
         starts_at: startsAt.toISOString().split("T")[0],
         ends_at: endsAt.toISOString().split("T")[0],
       })
-      .eq("id", subId);
+      .eq("id", subId)
+      .eq("status", "pending");
 
     // Email customer
     if (sub?.email) {
