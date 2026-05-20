@@ -37,6 +37,11 @@ export async function POST(request: NextRequest) {
   const toName = typeof body.to_name === "string" ? body.to_name.trim() : "";
   const templateId = typeof body.template_id === "string" ? body.template_id : null;
   const templateSlug = typeof body.template_slug === "string" ? body.template_slug : DEFAULT_SLUG;
+  // Optional popup-ad image to show in the email (a public URL).
+  const imageUrl =
+    typeof body.image_url === "string" && /^https?:\/\//i.test(body.image_url)
+      ? body.image_url
+      : null;
 
   if (!EMAIL_RE.test(toEmail)) {
     return Response.json({ error: "A valid recipient email is required" }, { status: 400 });
@@ -91,6 +96,14 @@ export async function POST(request: NextRequest) {
     pipelineEmailId: row.id,
   });
 
+  // Replace the <!--POPUP_IMAGE--> marker with the ad image (or nothing).
+  const imageBlock = imageUrl
+    ? `<table role="presentation" width="100%" style="margin:4px 0 20px;"><tr><td>` +
+      `<img src="${imageUrl}" alt="Your popup ad" ` +
+      `style="display:block;width:100%;max-width:496px;height:auto;border:1px solid #E8E4DD;" /></td></tr></table>`
+    : "";
+  const html = rendered.html.replace("<!--POPUP_IMAGE-->", imageBlock);
+
   // ── Hand straight to Resend ──────────────────────────────────────────
   try {
     const result = await resend.emails.send({
@@ -98,7 +111,7 @@ export async function POST(request: NextRequest) {
       to: toEmail,
       replyTo: REPLY_TO,
       subject: rendered.subject,
-      html: rendered.html,
+      html,
     });
 
     await supabaseAdmin
