@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_ADDRESS, ADMIN_NOTIFY_EMAIL } from "@/lib/resend";
+import { resend, FROM_ADDRESS, getNotifyEmails } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
       email,
       phone,
       ad_type,
+      landing_url,
       description,
       notes,
       banner_images,
@@ -21,12 +22,18 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!subscription_id || !token || !company_name || !contact_name || !email || !ad_type) {
+    if (!subscription_id || !token || !company_name || !contact_name || !email || !ad_type || !landing_url) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     if (!["banner", "popup"].includes(ad_type)) {
       return Response.json({ error: "Invalid ad_type" }, { status: 400 });
+    }
+
+    try {
+      new URL(landing_url);
+    } catch {
+      return Response.json({ error: "Invalid landing URL" }, { status: 400 });
     }
 
     // Validate token
@@ -55,6 +62,7 @@ export async function POST(request: NextRequest) {
         email,
         phone: phone || null,
         ad_type,
+        landing_url,
         description: description || null,
         notes: notes || null,
         banner_images: banner_images || [],
@@ -76,11 +84,19 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", subscription_id);
 
+    // Creative is in — cancel any pending creative/landing reminder emails so
+    // the customer doesn't keep getting nudged after they've completed the form.
+    await supabaseAdmin
+      .from("pipeline_emails")
+      .update({ status: "cancelled", cancel_reason: "Creative submitted" })
+      .eq("subscription_id", subscription_id)
+      .eq("status", "scheduled");
+
     // Send admin notification
     try {
       await resend.emails.send({
         from: FROM_ADDRESS,
-        to: ADMIN_NOTIFY_EMAIL,
+        to: await getNotifyEmails(),
         replyTo: email,
         subject: `Creative submitted — ${company_name}`,
         html: buildAdminNotification(company_name, contact_name, email, ad_type, subscription_id),

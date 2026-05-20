@@ -34,6 +34,7 @@ export function CreativeSubmitClient() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [adType, setAdType] = useState("banner");
+  const [landingUrl, setLandingUrl] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -117,6 +118,7 @@ export function CreativeSubmitClient() {
           email,
           phone,
           ad_type: adType,
+          landing_url: landingUrl,
           description,
           notes,
           banner_images: bannerUrls,
@@ -261,6 +263,18 @@ export function CreativeSubmitClient() {
                 onChange={setAdType}
                 disabled={submitting}
               />
+            </Field>
+            <Field label="Landing URL" required>
+              <input
+                type="url"
+                className="input"
+                value={landingUrl}
+                onChange={(e) => setLandingUrl(e.target.value)}
+                required
+                disabled={submitting}
+                placeholder="https://yourcompany.com/landing-page"
+              />
+              <p className="text-[12px] text-slate -mt-1">Where your ad should send users when they tap it.</p>
             </Field>
             <Field label="Description">
               <textarea

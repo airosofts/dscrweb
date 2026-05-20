@@ -78,6 +78,7 @@ const geoLabel = (g: Geo) => g.charAt(0).toUpperCase() + g.slice(1);
 export function PricingClient() {
   const [geo, setGeo] = useState<Geo>("national");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [rid, setRid] = useState<string | null>(null); // advertising_request_id from pipeline link
 
   const comingSoon = COMING_SOON.includes(geo);
   const selected = useMemo(
@@ -90,6 +91,7 @@ export function PricingClient() {
     const p = new URLSearchParams(window.location.search);
     const g = p.get("geo") as Geo | null;
     const t = p.get("tier");
+    const r = p.get("rid");
     if (g && ["national", "state", "metro"].includes(g)) {
       setGeo(g);
       if (COMING_SOON.includes(g)) return;
@@ -98,6 +100,7 @@ export function PricingClient() {
       const match = TIERS.find((x) => x.id === t);
       if (match) setSelectedId(match.id);
     }
+    if (r && /^[a-f0-9-]{20,}$/i.test(r)) setRid(r);
   }, []);
 
   const chooseGeo = (g: Geo) => {
@@ -114,7 +117,9 @@ export function PricingClient() {
 
   const handleCheckout = () => {
     if (!selected) return;
-    router.push(`/checkout?plan=${selected.id}&geo=${geo}`);
+    const params = new URLSearchParams({ plan: selected.id, geo });
+    if (rid) params.set("rid", rid);
+    router.push(`/checkout?${params.toString()}`);
   };
 
   return (

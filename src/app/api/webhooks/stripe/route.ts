@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import Stripe from "stripe";
 import { getStripe, WEBHOOK_SECRET } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_ADDRESS, ADMIN_NOTIFY_EMAIL } from "@/lib/resend";
+import { resend, FROM_ADDRESS, getNotifyEmails } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -76,6 +76,75 @@ export async function POST(request: NextRequest) {
       .eq("id", subId)
       .eq("status", "pending");
 
+    // Stop the pipeline sequence for any matched lead.
+    // (a) Explicit FK link, (b) same email, (c) same phone, (d) same company.
+    try {
+      const matchedRequestIds = new Set<string>();
+      if (sub?.advertising_request_id) matchedRequestIds.add(sub.advertising_request_id as string);
+
+      if (sub?.email) {
+        const { data: byEmail } = await supabaseAdmin
+          .from("advertising_requests")
+          .select("id")
+          .eq("email", String(sub.email).toLowerCase())
+          .is("pipeline_stopped_at", null);
+        byEmail?.forEach((r) => matchedRequestIds.add(r.id as string));
+      }
+
+      if (sub?.phone) {
+        const digits = String(sub.phone).replace(/\D+/g, "");
+        if (digits.length >= 7) {
+          const { data: byPhone } = await supabaseAdmin
+            .from("advertising_requests")
+            .select("id, phone")
+            .is("pipeline_stopped_at", null)
+            .limit(200);
+          byPhone?.forEach((r) => {
+            const rd = (r.phone as string | null)?.replace(/\D+/g, "") ?? "";
+            if (rd.length >= 7 && (rd.endsWith(digits.slice(-7)) || digits.endsWith(rd.slice(-7)))) {
+              matchedRequestIds.add(r.id as string);
+            }
+          });
+        }
+      }
+
+      if (sub?.company_name) {
+        const normalized = String(sub.company_name).toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (normalized.length >= 3) {
+          const { data: byCompany } = await supabaseAdmin
+            .from("advertising_requests")
+            .select("id, company_name")
+            .is("pipeline_stopped_at", null)
+            .limit(200);
+          byCompany?.forEach((r) => {
+            const cn = (r.company_name as string | null)?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? "";
+            if (cn.length >= 3 && cn === normalized) matchedRequestIds.add(r.id as string);
+          });
+        }
+      }
+
+      for (const rid of matchedRequestIds) {
+        await supabaseAdmin
+          .from("advertising_requests")
+          .update({
+            pipeline_stopped_at: new Date().toISOString(),
+            pipeline_stop_reason: "Lead converted (Stripe payment)",
+          })
+          .eq("id", rid)
+          .is("pipeline_stopped_at", null);
+        await supabaseAdmin
+          .from("pipeline_stops")
+          .insert({
+            advertising_request_id: rid,
+            action: "stop_all",
+            reason: "Auto-stop on Stripe payment",
+            admin_email: "system@stripe-webhook",
+          });
+      }
+    } catch (err) {
+      console.error("[webhook] auto-stop pipeline failed:", err);
+    }
+
     // Email customer
     if (sub?.email) {
       try {
@@ -99,7 +168,7 @@ export async function POST(request: NextRequest) {
     try {
       await resend.emails.send({
         from: FROM_ADDRESS,
-        to: ADMIN_NOTIFY_EMAIL,
+        to: await getNotifyEmails(),
         replyTo: sub?.email,
         subject: `New ad payment — ${sub?.ad_plans?.name ?? "Unknown"} · $${(pi.amount / 100).toFixed(0)}`,
         html: buildAdminEmail(sub, pi),

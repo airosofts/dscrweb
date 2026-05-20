@@ -41,6 +41,7 @@ export function CheckoutClient() {
   const router = useRouter();
   const planId = params.get("plan") ?? "";
   const geo = params.get("geo") ?? "national";
+  const rid = params.get("rid") ?? null; // advertising_request_id from pipeline link
 
   const planName = PLAN_LABELS[planId] ?? planId;
   const geoLabel = GEO_LABELS[geo] ?? geo;
@@ -87,6 +88,7 @@ export function CheckoutClient() {
           contact_name: name.trim() || null,
           company_name: company.trim() || null,
           phone: phone.trim() || null,
+          rid,
         }),
       });
       const data = await res.json();

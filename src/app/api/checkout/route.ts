@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
   const companyName = typeof body.company_name === "string" ? body.company_name.trim() : null;
   const contactName = typeof body.contact_name === "string" ? body.contact_name.trim() : null;
   const phone = typeof body.phone === "string" ? body.phone.trim() : null;
+  // Optional advertising_request_id from pipeline-driven traffic
+  const ridRaw = typeof body.rid === "string" ? body.rid.trim() : null;
+  const rid = ridRaw && /^[a-f0-9-]{20,}$/i.test(ridRaw) ? ridRaw : null;
 
   if (!VALID_PLANS.includes(planId))
     return Response.json({ error: "Invalid plan" }, { status: 400 });
@@ -66,6 +69,7 @@ export async function POST(request: NextRequest) {
       price_cents: priceCents,
       status: "pending",
       submission_token: submissionToken,
+      advertising_request_id: rid,
     })
     .select()
     .single();

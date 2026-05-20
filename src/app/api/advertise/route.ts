@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_ADDRESS, ADMIN_NOTIFY_EMAIL, PUBLIC_SITE_URL } from "@/lib/resend";
+import { resend, FROM_ADDRESS, getNotifyEmails } from "@/lib/resend";
 import {
   buildAdminNotification,
-  buildPricingEmail,
   type AdvertisingRequestPayload,
 } from "@/lib/email-templates";
+import { scheduleSequenceForRequest } from "@/lib/pipeline";
 
 const AD_TYPES = ["banner", "popup"];
 const PLACEMENTS = ["homepage", "calculator_page", "results_section", "other"];
@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
   const duration_raw = raw.duration_months;
   const additional_notes = str(raw.additional_notes, 2000) || null;
 
-  // Validation
   if (!company_name) return Response.json({ error: "Company name is required" }, { status: 400 });
   if (!contact_person) return Response.json({ error: "Contact person is required" }, { status: 400 });
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -69,7 +68,7 @@ export async function POST(request: NextRequest) {
     null;
   const user_agent = request.headers.get("user-agent") || null;
 
-  // ── 1. Persist the request ──────────────────────────────────────────────
+  // ── 1. Persist the request ─────────────────────────────────────────────
   const { data: inserted, error: insertError } = await supabaseAdmin
     .from("advertising_requests")
     .insert({
@@ -86,31 +85,30 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Could not save request" }, { status: 500 });
   }
 
-  const payload: AdvertisingRequestPayload = {
-    id: inserted.id,
-    companyName: inserted.company_name,
-    contactPerson: inserted.contact_person,
-    email: inserted.email,
-    phone: inserted.phone,
-    website: inserted.website,
-    adType: inserted.ad_type,
-    adDescription: inserted.ad_description,
-    targetAudience: inserted.target_audience,
-    preferredPlacement: inserted.preferred_placement,
-    budgetRange: inserted.budget_range,
-    budgetCustom: inserted.budget_custom,
-    startDate: inserted.start_date,
-    durationMonths: inserted.duration_months,
-    additionalNotes: inserted.additional_notes,
-    createdAt: inserted.created_at,
-  };
-
-  // ── 2. Send immediate admin notification ────────────────────────────────
+  // ── 2. Send immediate admin notification ───────────────────────────────
   try {
+    const payload: AdvertisingRequestPayload = {
+      id: inserted.id,
+      companyName: inserted.company_name,
+      contactPerson: inserted.contact_person,
+      email: inserted.email,
+      phone: inserted.phone,
+      website: inserted.website,
+      adType: inserted.ad_type,
+      adDescription: inserted.ad_description,
+      targetAudience: inserted.target_audience,
+      preferredPlacement: inserted.preferred_placement,
+      budgetRange: inserted.budget_range,
+      budgetCustom: inserted.budget_custom,
+      startDate: inserted.start_date,
+      durationMonths: inserted.duration_months,
+      additionalNotes: inserted.additional_notes,
+      createdAt: inserted.created_at,
+    };
     const admin = buildAdminNotification(payload);
     await resend.emails.send({
       from: FROM_ADDRESS,
-      to: ADMIN_NOTIFY_EMAIL,
+      to: await getNotifyEmails(),
       replyTo: email,
       subject: admin.subject,
       html: admin.html,
@@ -123,85 +121,25 @@ export async function POST(request: NextRequest) {
     console.error("[advertise] admin notification failed:", err);
   }
 
-  // ── 3. Create pipeline entries + schedule via Resend ─────────────────
+  // ── 3. Schedule the full sequence upfront ──────────────────────────────
+  // Every step lands in pipeline_emails as `status='scheduled'`. The cron
+  // processor evaluates each row's send_condition at fire-time and decides
+  // whether to send, skip, or cancel.
   try {
-    const { data: settings } = await supabaseAdmin
-      .from("pipeline_settings")
-      .select("*")
-      .eq("id", 1)
-      .single();
-
-    const pricingDelay = settings?.pricing_email_delay_minutes ?? 1;
-    const followupDelay = settings?.followup_delay_minutes ?? 1440;
-    const pricingEnabled = settings?.pricing_email_enabled ?? true;
-    const followupEnabled = settings?.followup_email_enabled ?? true;
-
-    const now = Date.now();
-    const pricingScheduledFor = new Date(now + pricingDelay * 60_000);
-    const followupScheduledFor = new Date(now + (pricingDelay + followupDelay) * 60_000);
-
-    // ── PRICING EMAIL: schedule via Resend scheduledAt ────────────
-    if (pricingEnabled) {
-      // Create pipeline record first to get ID for tracking
-      const { data: pipelineRow } = await supabaseAdmin
-        .from("pipeline_emails")
-        .insert({
-          advertising_request_id: inserted.id,
-          email_type: "pricing",
-          to_email: email,
-          to_name: contact_person,
-          scheduled_for: pricingScheduledFor.toISOString(),
-          status: "scheduled",
-        })
-        .select()
-        .single();
-
-      if (pipelineRow) {
-        const pricingUrl = `${PUBLIC_SITE_URL}/pricing?ref=pipeline&rid=${encodeURIComponent(inserted.id)}`;
-        const trackingOpts = { baseUrl: PUBLIC_SITE_URL, pipelineEmailId: pipelineRow.id };
-        const emailData = buildPricingEmail(payload, pricingUrl, trackingOpts);
-
-        try {
-          const result = await resend.emails.send({
-            from: FROM_ADDRESS,
-            to: email,
-            replyTo: "hamza@airosofts.com",
-            subject: emailData.subject,
-            html: emailData.html,
-            scheduledAt: pricingScheduledFor.toISOString(),
-          });
-
-          await supabaseAdmin
-            .from("pipeline_emails")
-            .update({
-              status: "sent",
-              sent_at: new Date().toISOString(),
-              resend_email_id: result.data?.id ?? null,
-            })
-            .eq("id", pipelineRow.id);
-        } catch (err) {
-          console.error("[advertise] pricing email schedule failed:", err);
-          await supabaseAdmin
-            .from("pipeline_emails")
-            .update({ status: "failed", skip_reason: String(err) })
-            .eq("id", pipelineRow.id);
-        }
-      }
-    }
-
-    // ── FOLLOWUP EMAIL: stays in pipeline for cron (needs open-check) ─
-    if (followupEnabled) {
-      await supabaseAdmin.from("pipeline_emails").insert({
-        advertising_request_id: inserted.id,
-        email_type: "followup",
-        to_email: email,
-        to_name: contact_person,
-        scheduled_for: followupScheduledFor.toISOString(),
-        status: "scheduled",
-      });
+    const { scheduled, sequenceId } = await scheduleSequenceForRequest({
+      id: inserted.id,
+      email,
+      contact_person,
+      company_name: inserted.company_name,
+      unsubscribe_token: inserted.unsubscribe_token ?? null,
+    });
+    if (!sequenceId) {
+      console.warn("[advertise] no default pipeline sequence found");
+    } else {
+      console.log(`[advertise] scheduled ${scheduled} pipeline emails for ${inserted.id}`);
     }
   } catch (err) {
-    console.error("[advertise] pipeline creation failed:", err);
+    console.error("[advertise] sequence scheduling failed:", err);
   }
 
   return Response.json({ ok: true, id: inserted.id }, { status: 201 });
