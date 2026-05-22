@@ -23,44 +23,37 @@ const TIERS: Tier[] = [
   {
     id: "starter", name: "Starter", placement: "Results Page Banner", duration: "1 month",
     badge: null, recommended: false, savings: null,
-    features: ["Banner ad", "Impression reporting", "320×50 format"],
+    features: ["Results-page banner", "View reporting"],
     prices: { national: 349, state: 119, metro: 69 },
   },
   {
     id: "premium", name: "Premium", placement: "Full-Screen Pop-Up", duration: "1 month",
     badge: null, recommended: false, savings: null,
-    features: ["Full-screen interstitial", "Click analytics", "Custom creative"],
+    features: ["Full-screen pop-up", "Click tracking", "Custom creative"],
     prices: { national: 597, state: 199, metro: 119 },
   },
   {
     id: "growth", name: "Growth", placement: "Homepage Banner", duration: "3 months",
     badge: null, recommended: false, savings: null,
-    features: ["Homepage placement", "Tap reporting", "Priority position"],
+    features: ["Homepage banner", "Click tracking", "Priority placement"],
     prices: { national: 897, state: 299, metro: 179 },
   },
   {
-    id: "pro", name: "Pro", placement: "Homepage + Banner", duration: "6 months",
-    badge: "Best Value", recommended: true, savings: "Save 58% vs monthly",
-    features: ["Dual placement", "Full dashboard", "A/B testing", "Dedicated support"],
-    prices: { national: 1497, state: 497, metro: 297 },
-  },
-  {
     id: "premium-plus", name: "Premium Plus", placement: "Full-Screen Pop-Up", duration: "3 months",
-    badge: "Popular", recommended: false, savings: "Save 16% vs monthly",
-    features: ["Category exclusivity", "Monthly reviews", "Account rep"],
+    badge: "Best Value", recommended: true, savings: "Save 16% vs monthly",
+    features: ["Full-screen pop-up", "Priority placement", "Dedicated support"],
     prices: { national: 1497, state: 497, metro: 297 },
   },
 ];
 
 const FEATURES_TABLE: { feature: string; values: boolean[] }[] = [
-  { feature: "Impression reporting", values: [true, true, true, true, true] },
-  { feature: "Click analytics", values: [false, true, true, true, true] },
-  { feature: "A/B testing", values: [false, false, false, true, true] },
-  { feature: "Dedicated support", values: [false, false, false, true, true] },
-  { feature: "Category exclusivity", values: [false, false, false, false, true] },
+  { feature: "View reporting", values: [true, true, true, true] },
+  { feature: "Click tracking", values: [false, true, true, true] },
+  { feature: "Priority placement", values: [false, false, true, true] },
+  { feature: "Dedicated support", values: [false, false, false, true] },
 ];
-const FEATURE_COLS = ["Starter", "Premium", "Growth", "Pro", "Premium+"];
-const FEATURE_PRICES = ["$349", "$597", "$897", "$1,497", "$1,497"];
+const FEATURE_COLS = ["Starter", "Premium", "Growth", "Premium+"];
+const FEATURE_PRICES = ["$349", "$597", "$897", "$1,497"];
 
 const FAQS = [
   { q: "What is geo targeting?", a: "Ads served by geography. National is live now — State and Metro targeting is coming soon at reduced pricing." },
@@ -290,11 +283,11 @@ export function PricingClient() {
                       key={col}
                       className={
                         "px-5 py-4 text-left text-[13px] font-bold text-ink " +
-                        (col === "Pro" ? "!text-brass" : "")
+                        (col === "Premium+" ? "!text-brass" : "")
                       }
                     >
                       {col}
-                      {col === "Pro" && <span className="ml-1">★</span>}
+                      {col === "Premium+" && <span className="ml-1">★</span>}
                       <br />
                       <span className="font-normal text-muted opacity-60">{FEATURE_PRICES[i]}</span>
                     </th>
