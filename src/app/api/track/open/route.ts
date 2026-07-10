@@ -7,6 +7,12 @@ const PIXEL = Buffer.from(
   "base64",
 );
 
+// States an open is allowed to upgrade FROM. Never resurrect a bounced,
+// failed, cancelled, or skipped email — mail-server scanners fetch the
+// pixel even for messages they end up rejecting, which used to flip
+// bounced emails to "opened".
+const OPENABLE = ["resend_scheduled", "processing", "sent", "delivered"];
+
 export async function GET(request: NextRequest) {
   const eid = request.nextUrl.searchParams.get("eid");
 
@@ -19,7 +25,8 @@ export async function GET(request: NextRequest) {
           opened_at: new Date().toISOString(),
         })
         .eq("id", eid)
-        .is("opened_at", null);
+        .is("opened_at", null)
+        .in("status", OPENABLE);
     } catch {
       // silently fail — don't block pixel response
     }
