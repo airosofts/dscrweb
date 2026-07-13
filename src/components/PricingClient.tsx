@@ -72,6 +72,7 @@ export function PricingClient() {
   const [geo, setGeo] = useState<Geo>("national");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rid, setRid] = useState<string | null>(null); // advertising_request_id from pipeline link
+  const [leadCtx, setLeadCtx] = useState<{ companyName: string; targetStates: string[] } | null>(null);
 
   const comingSoon = COMING_SOON.includes(geo);
   const selected = useMemo(
@@ -96,6 +97,19 @@ export function PricingClient() {
     if (r && /^[a-f0-9-]{20,}$/i.test(r)) setRid(r);
   }, []);
 
+  // Pipeline visitors arrive with ?rid= — greet them with their own request
+  // details so the page matches the email's "options that fit what you
+  // described" promise.
+  useEffect(() => {
+    if (!rid) return;
+    fetch(`/api/advertise/context?rid=${encodeURIComponent(rid)}`)
+      .then((res) => res.json())
+      .then((d) => {
+        if (d?.found) setLeadCtx({ companyName: d.companyName, targetStates: d.targetStates });
+      })
+      .catch(() => {});
+  }, [rid]);
+
   const chooseGeo = (g: Geo) => {
     setGeo(g);
     if (COMING_SOON.includes(g)) setSelectedId(null);
@@ -118,6 +132,25 @@ export function PricingClient() {
   return (
     <div className="bg-cream text-ink">
       <div className="relative z-10 mx-auto max-w-[720px] px-6 pb-32 pt-14 max-[600px]:pt-10">
+        {/* PERSONALIZED GREETING for pipeline visitors */}
+        {leadCtx && (
+          <div className="mb-8 border border-rule border-l-[3px] border-l-brass bg-card px-5 py-4">
+            <div className="mb-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-brass">
+              Prepared for {leadCtx.companyName}
+            </div>
+            <p className="text-[13px] leading-[1.6] text-slate">
+              {leadCtx.targetStates.length > 0 ? (
+                <>
+                  Requested markets: <strong className="text-ink">{leadCtx.targetStates.join(', ')}</strong>.
+                  Pick a plan below and we&rsquo;ll apply your state targeting when your ad goes live.
+                </>
+              ) : (
+                <>Your placement will run nationwide. Pick a plan below to get started.</>
+              )}
+            </p>
+          </div>
+        )}
+
         {/* GEO TOGGLE */}
         <div className="mb-8 flex flex-wrap items-center gap-3 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-2">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
