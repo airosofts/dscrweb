@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         from: FROM_ADDRESS,
         to: await getNotifyEmails(),
         replyTo: email,
-        subject: `Creative submitted — ${company_name}`,
+        subject: 'New creative submission received',
         html: buildAdminNotification(company_name, contact_name, email, ad_type, subscription_id),
       });
     } catch (err) {

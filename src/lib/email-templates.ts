@@ -171,7 +171,7 @@ export function buildAdminNotification(req: AdvertisingRequestPayload) {
     </div>`;
 
   return {
-    subject: `New advertising request · ${req.companyName}`,
+    subject: 'New advertising request received',
     html: shell({
       preview: `New advertising request from ${req.companyName}`,
       kicker: "New Submission",
