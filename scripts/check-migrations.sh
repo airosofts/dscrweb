@@ -62,6 +62,9 @@ check popup_ads target_states
 check advertising_requests target_states
 check ad_impressions region
 
+echo "— 20260713_creative_target_states.sql"
+check creative_submissions target_states
+
 echo
 if [[ $FAIL -eq 0 ]]; then
   echo "All $PASS checks passed — every migration is applied. ✅"

@@ -23,6 +23,7 @@ export type AdvertisingRequestPayload = {
   startDate?: string | null;
   durationMonths?: number | null;
   additionalNotes?: string | null;
+  targetStates?: string[] | null;
   createdAt: string;
 };
 
@@ -154,6 +155,7 @@ export function buildAdminNotification(req: AdvertisingRequestPayload) {
           ${row("Website", req.website ? `<a href="${req.website}" style="color:#9B7B4E;text-decoration:none;">${req.website}</a>` : "")}
           ${row("Ad Type", label(req.adType))}
           ${row("Placement", label(req.preferredPlacement))}
+          ${row("Target Markets", req.targetStates?.length ? req.targetStates.join(", ") : "Nationwide")}
           ${row("Budget", budgetDisplay)}
           ${row("Duration", req.durationMonths ? `${req.durationMonths} month${req.durationMonths === 1 ? "" : "s"}` : "")}
           ${row("Description", req.adDescription)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { US_STATES } from "@/lib/us-states";
 import { useSearchParams } from "next/navigation";
 
 const AD_TYPES = [
@@ -37,6 +38,7 @@ export function CreativeSubmitClient() {
   const [landingUrl, setLandingUrl] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
+  const [targetStates, setTargetStates] = useState<string[]>([]);
 
   // File state
   const [bannerFiles, setBannerFiles] = useState<File[]>([]);
@@ -121,6 +123,7 @@ export function CreativeSubmitClient() {
           landing_url: landingUrl,
           description,
           notes,
+          target_states: targetStates.length ? targetStates : null,
           banner_images: bannerUrls,
           popup_images: popupUrls,
           logo_files: logoUrls,
@@ -285,6 +288,41 @@ export function CreativeSubmitClient() {
                 disabled={submitting}
                 placeholder="Brief description of your ad campaign and messaging"
               />
+            </Field>
+            <Field label="Target Markets (optional)">
+              <p className="mb-2 text-xs text-slate-500">
+                Leave empty to run nationwide, or pick the states your ad should show in.
+              </p>
+              {targetStates.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {targetStates.map((s) => (
+                    <span key={s} className="inline-flex items-center gap-1 rounded-full bg-brass/10 px-2.5 py-1 text-xs font-medium text-brass">
+                      {s}
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => setTargetStates(targetStates.filter((v) => v !== s))}
+                        aria-label={`Remove ${s}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <select
+                className="input"
+                value=""
+                disabled={submitting}
+                onChange={(e) => {
+                  if (e.target.value) setTargetStates([...targetStates, e.target.value]);
+                }}
+              >
+                <option value="">+ Add a state…</option>
+                {US_STATES.filter((s) => !targetStates.includes(s)).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </Field>
           </div>
         </Section>

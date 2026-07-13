@@ -19,6 +19,7 @@ export const ALLOWED_VARIABLES = [
   "pricingUrl",
   "unsubscribeUrl",
   "submitCreativeUrl",
+  "targetStates",
   "year",
 ] as const;
 
@@ -80,6 +81,7 @@ export type LeadVarsInput = {
   companyName: string;
   email: string;
   unsubscribeToken: string | null;
+  targetStates?: string[] | null;
   /** Optional override (used by creative reminders) */
   submitCreativeUrl?: string;
 };
@@ -109,6 +111,7 @@ export function buildLeadVars(input: LeadVarsInput): TemplateVars {
     pricingUrl: wrapClick(baseUrl, input.pipelineEmailId, rawPricing),
     unsubscribeUrl: unsubUrl,
     submitCreativeUrl: input.submitCreativeUrl ?? "",
+    targetStates: input.targetStates?.length ? input.targetStates.join(", ") : "Nationwide",
     year: String(new Date().getFullYear()),
   };
 }
@@ -317,6 +320,7 @@ export async function scheduleSequenceForRequest(
     contact_person: string;
     company_name: string;
     unsubscribe_token: string | null;
+    target_states?: string[] | null;
   },
   options?: { sequenceId?: string; baseTime?: Date },
 ): Promise<{ scheduled: number; sequenceId: string | null }> {
@@ -396,6 +400,7 @@ async function scheduleFirstStepViaResend(
     contact_person: string;
     company_name: string;
     unsubscribe_token: string | null;
+    target_states?: string[] | null;
   },
   sequenceId: string,
   step: { id: string; step_order: number; template_id: string; send_condition: SendCondition },
@@ -443,6 +448,7 @@ async function scheduleFirstStepViaResend(
     companyName: req.company_name,
     email: req.email,
     unsubscribeToken: req.unsubscribe_token,
+    targetStates: req.target_states,
   });
   const rendered = renderTemplate(tmpl as TemplateRow, vars, {
     baseUrl: PUBLIC_SITE_URL,

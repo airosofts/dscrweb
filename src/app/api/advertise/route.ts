@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
       adType: inserted.ad_type,
       adDescription: inserted.ad_description,
       targetAudience: inserted.target_audience,
+      targetStates: inserted.target_states,
       preferredPlacement: inserted.preferred_placement,
       budgetRange: inserted.budget_range,
       budgetCustom: inserted.budget_custom,
@@ -141,6 +142,7 @@ export async function POST(request: NextRequest) {
       contact_person,
       company_name: inserted.company_name,
       unsubscribe_token: inserted.unsubscribe_token ?? null,
+      target_states: inserted.target_states ?? null,
     });
     if (!sequenceId) {
       console.warn("[advertise] no default pipeline sequence found");

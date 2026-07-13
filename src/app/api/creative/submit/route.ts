@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_ADDRESS, getNotifyEmails } from "@/lib/resend";
+import { US_STATES } from "@/lib/us-states";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +30,12 @@ export async function POST(request: NextRequest) {
     if (!["banner", "popup"].includes(ad_type)) {
       return Response.json({ error: "Invalid ad_type" }, { status: 400 });
     }
+
+    // Target markets: whitelisted state names, deduped; null = nationwide.
+    const target_states = Array.isArray(body.target_states)
+      ? [...new Set((body.target_states as unknown[]).map(String))]
+          .filter((s) => US_STATES.includes(s))
+      : [];
 
     try {
       new URL(landing_url);
@@ -65,6 +72,7 @@ export async function POST(request: NextRequest) {
         landing_url,
         description: description || null,
         notes: notes || null,
+        target_states: target_states.length > 0 ? target_states : null,
         banner_images: banner_images || [],
         popup_images: popup_images || [],
         logo_files: logo_files || [],

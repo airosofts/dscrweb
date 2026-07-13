@@ -52,6 +52,7 @@ type AdvertisingRequest = {
   pipeline_stopped_at: string | null;
   pipeline_stop_reason: string | null;
   unsubscribe_token: string;
+  target_states?: string[] | null;
 };
 
 type Subscription = {
@@ -197,7 +198,7 @@ async function processAdInquiryRow(
   const { data: req } = await supabaseAdmin
     .from("advertising_requests")
     .select(
-      `id, company_name, contact_person, email, phone,
+      `id, company_name, contact_person, email, phone, target_states,
        pipeline_stopped_at, pipeline_stop_reason, unsubscribe_token`,
     )
     .eq("id", pe.advertising_request_id!)
@@ -282,6 +283,7 @@ async function processAdInquiryRow(
       companyName: lead.company_name,
       email: lead.email,
       unsubscribeToken: lead.unsubscribe_token,
+      targetStates: lead.target_states,
     });
     const rendered = renderTemplate(tpl, vars, {
       baseUrl: PUBLIC_SITE_URL,
