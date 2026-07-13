@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { US_STATES } from "@/lib/us-states";
 
 const AD_TYPES = [
   { value: "banner", label: "Banner Ad" },
@@ -43,6 +44,7 @@ export function AdvertiseForm() {
   const [adDescription, setAdDescription] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [preferredPlacement, setPreferredPlacement] = useState("homepage");
+  const [targetStates, setTargetStates] = useState<string[]>([]);
   // Budget
   const [budgetRange, setBudgetRange] = useState("1000_5000");
   const [budgetCustom, setBudgetCustom] = useState("");
@@ -73,6 +75,7 @@ export function AdvertiseForm() {
           ad_description: adDescription,
           target_audience: targetAudience,
           preferred_placement: preferredPlacement,
+          target_states: targetStates.length ? targetStates : null,
           budget_range: budgetRange,
           budget_custom: budgetRange === "custom" ? budgetCustom : null,
           start_date: startDate || null,
@@ -212,6 +215,41 @@ export function AdvertiseForm() {
               disabled={sending}
               placeholder="e.g. DSCR lenders, buy-and-hold investors in the Southeast"
             />
+          </Field>
+          <Field label="Target Markets" optional className="col-span-2 max-[600px]:col-span-1">
+            <p className="mb-2 text-xs text-slate-500">
+              Leave empty to run nationwide, or pick the states you want your ad shown in.
+            </p>
+            {targetStates.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {targetStates.map((s) => (
+                  <span key={s} className="inline-flex items-center gap-1 rounded-full bg-brass/10 px-2.5 py-1 text-xs font-medium text-brass">
+                    {s}
+                    <button
+                      type="button"
+                      disabled={sending}
+                      onClick={() => setTargetStates(targetStates.filter((v) => v !== s))}
+                      aria-label={`Remove ${s}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <select
+              className="input"
+              value=""
+              disabled={sending}
+              onChange={(e) => {
+                if (e.target.value) setTargetStates([...targetStates, e.target.value]);
+              }}
+            >
+              <option value="">+ Add a state…</option>
+              {US_STATES.filter((s) => !targetStates.includes(s)).map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </Field>
         </div>
       </Section>

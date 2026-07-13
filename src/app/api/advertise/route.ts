@@ -6,6 +6,7 @@ import {
   type AdvertisingRequestPayload,
 } from "@/lib/email-templates";
 import { scheduleSequenceForRequest } from "@/lib/pipeline";
+import { US_STATES } from "@/lib/us-states";
 
 const AD_TYPES = ["banner", "popup"];
 const PLACEMENTS = ["homepage", "calculator_page", "results_section", "other"];
@@ -36,6 +37,14 @@ export async function POST(request: NextRequest) {
   const start_date = str(raw.start_date, 32) || null;
   const duration_raw = raw.duration_months;
   const additional_notes = str(raw.additional_notes, 2000) || null;
+  // Requested target markets: array of US state names; null = nationwide.
+  // Whitelisted against US_STATES and deduped — this endpoint is public.
+  const target_states = (() => {
+    if (!Array.isArray(raw.target_states)) return null;
+    const valid = [...new Set(raw.target_states.map(String))]
+      .filter((s) => US_STATES.includes(s));
+    return valid.length > 0 ? valid : null;
+  })();
 
   if (!company_name) return Response.json({ error: "Company name is required" }, { status: 400 });
   if (!contact_person) return Response.json({ error: "Contact person is required" }, { status: 400 });
@@ -74,7 +83,7 @@ export async function POST(request: NextRequest) {
     .insert({
       company_name, contact_person, email, phone, website,
       ad_type, ad_description, target_audience, preferred_placement,
-      budget_range, budget_custom, start_date, duration_months,
+      target_states, budget_range, budget_custom, start_date, duration_months,
       additional_notes, user_ip, user_agent,
     })
     .select()
