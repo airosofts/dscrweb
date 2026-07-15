@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_ADDRESS, getNotifyEmails } from "@/lib/resend";
+import { recordEvent } from "@/lib/journey";
 
 /**
  * Resend Webhook Handler
@@ -193,6 +194,7 @@ export async function POST(request: Request) {
           .from("pipeline_emails")
           .update({ status: "delivered", sent_at: row.status === "sent" ? undefined : now })
           .eq("id", row.id);
+        await recordEvent(row.advertising_request_id, "email_delivered", { metadata: { via: "resend_webhook" } });
       }
       break;
     }
@@ -206,7 +208,10 @@ export async function POST(request: Request) {
         .in("status", OPENABLE)
         .select("id");
       // Notify only on the FIRST open (repeat opens / pixel-recorded opens skip).
-      if (changed?.length) await notifyContacts(eventType, row);
+      if (changed?.length) {
+        await notifyContacts(eventType, row);
+        await recordEvent(row.advertising_request_id, "email_opened", { metadata: { via: "resend_webhook" } });
+      }
       break;
     }
 
@@ -221,6 +226,7 @@ export async function POST(request: Request) {
       if (changed?.length) {
         const link = (data.click as Record<string, unknown>)?.link;
         await notifyContacts(eventType, row, link ? String(link) : undefined);
+        await recordEvent(row.advertising_request_id, "email_clicked", { metadata: { via: "resend_webhook", link } });
       }
       break;
     }
@@ -238,7 +244,10 @@ export async function POST(request: Request) {
       // Bounced addresses won't suddenly start delivering, and Resend will
       // rate-limit our domain if we keep hammering them.
       await stopLead(`Auto-stop: bounce (${String(bounceReason).slice(0, 200)})`);
-      if (!alreadyDead) await notifyContacts(eventType, row, String(bounceReason));
+      if (!alreadyDead) {
+        await notifyContacts(eventType, row, String(bounceReason));
+        await recordEvent(row.advertising_request_id, "email_bounced", { metadata: { reason: String(bounceReason) } });
+      }
       break;
     }
 

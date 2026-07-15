@@ -7,6 +7,7 @@ import {
 } from "@/lib/email-templates";
 import { scheduleSequenceForRequest } from "@/lib/pipeline";
 import { US_STATES } from "@/lib/us-states";
+import { recordEvent } from "@/lib/journey";
 
 const AD_TYPES = ["banner", "popup"];
 const PLACEMENTS = ["homepage", "calculator_page", "results_section", "other"];
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
       ad_type, ad_description, target_audience, preferred_placement,
       target_states, budget_range, budget_custom, start_date, duration_months,
       additional_notes, user_ip, user_agent,
+      journey_mode: 'dynamic',
     })
     .select()
     .single();
@@ -93,6 +95,8 @@ export async function POST(request: NextRequest) {
     console.error("[advertise] insert failed:", insertError);
     return Response.json({ error: "Could not save request" }, { status: 500 });
   }
+
+  await recordEvent(inserted.id, "form_submitted", { metadata: { ad_type, user_ip } });
 
   // ── 2. Send immediate admin notification ───────────────────────────────
   try {
@@ -143,7 +147,7 @@ export async function POST(request: NextRequest) {
       company_name: inserted.company_name,
       unsubscribe_token: inserted.unsubscribe_token ?? null,
       target_states: inserted.target_states ?? null,
-    });
+    }, { firstStepOnly: true });
     if (!sequenceId) {
       console.warn("[advertise] no default pipeline sequence found");
     } else {

@@ -68,6 +68,17 @@ const geoLabel = (g: Geo) => g.charAt(0).toUpperCase() + g.slice(1);
 
 /* ─────────────────────────── Component ─────────────────────────── */
 
+function beacon(type: string, rid: string, source: "link" | "stored", meta?: Record<string, unknown>) {
+  try {
+    fetch("/api/track/journey", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, rid, source, meta }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch { /* never block the page */ }
+}
+
 export function PricingClient() {
   const [geo, setGeo] = useState<Geo>("national");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -94,7 +105,21 @@ export function PricingClient() {
       const match = TIERS.find((x) => x.id === t);
       if (match) setSelectedId(match.id);
     }
-    if (r && /^[a-f0-9-]{20,}$/i.test(r)) setRid(r);
+    if (r && /^[a-f0-9-]{20,}$/i.test(r)) {
+      setRid(r);
+      try { localStorage.setItem("dscr_rid", r); } catch { /* private mode */ }
+      beacon("pricing_viewed", r, "link");
+    } else {
+      // Returning visitor without an email link — attribute via this
+      // browser's stored request id (strong, not certain).
+      try {
+        const stored = localStorage.getItem("dscr_rid");
+        if (stored) {
+          setRid(stored);
+          beacon("pricing_viewed", stored, "stored");
+        }
+      } catch { /* private mode */ }
+    }
   }, []);
 
   // Pipeline visitors arrive with ?rid= — greet them with their own request
@@ -124,6 +149,7 @@ export function PricingClient() {
 
   const handleCheckout = () => {
     if (!selected) return;
+    if (rid) beacon("checkout_started", rid, "link", { plan: selected.id, geo });
     const params = new URLSearchParams({ plan: selected.id, geo });
     if (rid) params.set("rid", rid);
     router.push(`/checkout?${params.toString()}`);

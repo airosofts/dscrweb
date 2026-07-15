@@ -83,8 +83,13 @@ export function AdvertiseForm() {
           additional_notes: additionalNotes,
         }),
       });
-      const data: { error?: string } = await res.json().catch(() => ({}));
+      const data: { error?: string; id?: string } = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Could not submit request");
+      // Remember this browser belongs to this lead so later pricing/checkout
+      // visits attribute even without an email-link rid.
+      if (data.id) {
+        try { localStorage.setItem("dscr_rid", data.id); } catch { /* private mode */ }
+      }
       setStatus("sent");
     } catch (err) {
       setStatus("idle");

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { recordEvent } from "@/lib/journey";
 
 // 1x1 transparent GIF
 const PIXEL = Buffer.from(
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   if (eid) {
     try {
-      await supabaseAdmin
+      const { data: changed } = await supabaseAdmin
         .from("pipeline_emails")
         .update({
           status: "opened",
@@ -26,7 +27,13 @@ export async function GET(request: NextRequest) {
         })
         .eq("id", eid)
         .is("opened_at", null)
-        .in("status", OPENABLE);
+        .in("status", OPENABLE)
+        .select("advertising_request_id");
+      if (changed?.[0]?.advertising_request_id) {
+        await recordEvent(changed[0].advertising_request_id, "email_opened", {
+          metadata: { pipeline_email_id: eid, via: "pixel" },
+        });
+      }
     } catch {
       // silently fail — don't block pixel response
     }

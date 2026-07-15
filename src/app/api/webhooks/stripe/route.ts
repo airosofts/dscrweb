@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import Stripe from "stripe";
 import { getStripe, WEBHOOK_SECRET } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase";
+import { recordEvent } from "@/lib/journey";
 import { resend, FROM_ADDRESS, getNotifyEmails } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
@@ -80,7 +81,10 @@ export async function POST(request: NextRequest) {
     // (a) Explicit FK link, (b) same email, (c) same phone, (d) same company.
     try {
       const matchedRequestIds = new Set<string>();
-      if (sub?.advertising_request_id) matchedRequestIds.add(sub.advertising_request_id as string);
+      if (sub?.advertising_request_id) {
+        matchedRequestIds.add(sub.advertising_request_id as string);
+        await recordEvent(sub.advertising_request_id as string, "paid", { metadata: { subscription_id: sub.id } });
+      }
 
       if (sub?.email) {
         const { data: byEmail } = await supabaseAdmin

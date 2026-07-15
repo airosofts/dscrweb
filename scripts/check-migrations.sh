@@ -65,6 +65,12 @@ check ad_impressions region
 echo "— 20260713_creative_target_states.sql"
 check creative_submissions target_states
 
+echo "— 20260715_journey_engine.sql"
+check journey_events event_type
+check journey_rules rule_key
+check advertising_requests journey_mode
+check pipeline_emails trigger_reason
+
 echo
 if [[ $FAIL -eq 0 ]]; then
   echo "All $PASS checks passed — every migration is applied. ✅"

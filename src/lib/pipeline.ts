@@ -322,7 +322,7 @@ export async function scheduleSequenceForRequest(
     unsubscribe_token: string | null;
     target_states?: string[] | null;
   },
-  options?: { sequenceId?: string; baseTime?: Date },
+  options?: { sequenceId?: string; baseTime?: Date; firstStepOnly?: boolean },
 ): Promise<{ scheduled: number; sequenceId: string | null }> {
   const base = options?.baseTime ?? new Date();
 
@@ -356,6 +356,10 @@ export async function scheduleSequenceForRequest(
     const s = steps[i];
     cumulative += s.delay_minutes;
     const scheduledFor = new Date(base.getTime() + cumulative * 60_000).toISOString();
+
+    // Dynamic-journey leads get only the opener; the journey engine decides
+    // every subsequent email from the lead's behavior.
+    if (options?.firstStepOnly && i > 0) break;
 
     if (i === 0) {
       // Step 1 → Resend-scheduled.

@@ -15,6 +15,7 @@
  */
 
 import { supabaseAdmin } from "@/lib/supabase";
+import { evaluateJourneys } from "@/lib/journey";
 import { resend, FROM_ADDRESS, PUBLIC_SITE_URL, REPLY_TO } from "@/lib/resend";
 import {
   buildLeadVars,
@@ -88,6 +89,17 @@ export async function GET() {
     console.error("[pipeline] reminder scheduling failed:", err);
   }
 
+  // ── 0c. Behavior-driven journey engine: decide next emails for dynamic
+  // leads from their events. Runs before the due fetch so decisions queued
+  // inside the send window go out on this same tick. ─────────────────────
+  let journeyQueued = 0;
+  try {
+    const j = await evaluateJourneys();
+    journeyQueued = j.queued;
+  } catch (err) {
+    console.error("[pipeline] journey evaluation failed:", err);
+  }
+
   // ── 1. Fetch due rows ──────────────────────────────────────────────────
   const { data: dueEmails, error } = await supabaseAdmin
     .from("pipeline_emails")
@@ -113,6 +125,7 @@ export async function GET() {
       creativeScheduled,
       landingScheduled,
       resendCancelled,
+      journeyQueued,
     });
   }
 
@@ -150,6 +163,7 @@ export async function GET() {
     creativeScheduled,
     landingScheduled,
     resendCancelled,
+    journeyQueued,
   });
 }
 

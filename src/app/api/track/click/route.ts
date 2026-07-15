@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { recordEvent } from "@/lib/journey";
 
 // States a click may upgrade FROM (a click implies an open, so "opened"
 // is included). Terminal states — bounced, failed, cancelled, skipped —
@@ -28,12 +29,18 @@ export async function GET(request: NextRequest) {
   if (eid) {
     try {
       const now = new Date().toISOString();
-      await supabaseAdmin
+      const { data: changed } = await supabaseAdmin
         .from("pipeline_emails")
         .update({ status: "clicked", clicked_at: now })
         .eq("id", eid)
         .is("clicked_at", null)
-        .in("status", CLICKABLE);
+        .in("status", CLICKABLE)
+        .select("advertising_request_id");
+      if (changed?.[0]?.advertising_request_id) {
+        await recordEvent(changed[0].advertising_request_id, "email_clicked", {
+          metadata: { pipeline_email_id: eid, destination: url },
+        });
+      }
     } catch {
       // silently fail — don't block redirect
     }
