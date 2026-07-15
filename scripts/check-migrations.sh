@@ -71,6 +71,9 @@ check journey_rules rule_key
 check advertising_requests journey_mode
 check pipeline_emails trigger_reason
 
+echo "— 20260715_journey_stages.sql"
+check journey_rules max_sends
+
 echo
 if [[ $FAIL -eq 0 ]]; then
   echo "All $PASS checks passed — every migration is applied. ✅"
