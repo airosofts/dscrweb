@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Reveal } from "@/components/RevealOnScroll";
 import { PhoneMockup } from "@/components/PhoneMockup";
 import { AdvertiseForm } from "@/components/AdvertiseForm";
+import EngagementTracker from "@/components/EngagementTracker";
 
 export const metadata: Metadata = {
   title: "Advertise on DSCR Calculator Pro — Reach Real Estate Investors",
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 export default function AdvertisePage() {
   return (
     <div className="bg-cream">
+      <EngagementTracker />
       <Nav />
       <Hero />
       <StatsBar />
@@ -30,7 +32,7 @@ export default function AdvertisePage() {
 /* ─────────────────────────── HERO ─────────────────────────── */
 function Hero() {
   return (
-    <section className="relative overflow-hidden bg-ink pb-24 pt-36 max-[900px]:pt-28">
+    <section data-track-section="hero" className="relative overflow-hidden bg-ink pb-24 pt-36 max-[900px]:pt-28">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -89,7 +91,7 @@ const VALUE_POINTS = [
 
 function StatsBar() {
   return (
-    <div className="border-b border-rule bg-card">
+    <div data-track-section="stats" className="border-b border-rule bg-card">
       <div className="mx-auto grid max-w-[1040px] grid-cols-4 divide-x divide-rule px-6 max-[600px]:grid-cols-2 max-[600px]:divide-x-0">
         {VALUE_POINTS.map((s, i) => (
           <Reveal key={s.label} delay={i * 80}>
@@ -125,7 +127,7 @@ const WHY_CARDS = [
 
 function WhySection() {
   return (
-    <section className="bg-cream py-[88px] max-[600px]:py-16">
+    <section data-track-section="why" className="bg-cream py-[88px] max-[600px]:py-16">
       <div className="mx-auto max-w-[1040px] px-6">
         <Reveal>
           <SectionHeader centered kicker="Why DSCR Calculator Pro" heading="Your Brand, Where Deals Get Done">
@@ -160,7 +162,7 @@ const GEO_FEATURES = [
 
 function GeoSection() {
   return (
-    <section id="targeting" className="bg-card-alt py-[88px] max-[600px]:py-16">
+    <section id="targeting" data-track-section="targeting" className="bg-card-alt py-[88px] max-[600px]:py-16">
       <div className="mx-auto grid max-w-[1040px] grid-cols-2 items-center gap-16 px-6 max-[900px]:grid-cols-1 max-[900px]:gap-10">
         <Reveal>
           <div>
@@ -237,7 +239,7 @@ const STEPS = [
 
 function HowSection() {
   return (
-    <section id="how" className="bg-cream py-[88px] max-[600px]:py-16">
+    <section id="how" data-track-section="how" className="bg-cream py-[88px] max-[600px]:py-16">
       <div className="mx-auto max-w-[1040px] px-6">
         <Reveal>
           <SectionHeader centered kicker="How It Works" heading="Live in Minutes, Not Weeks" />
@@ -268,7 +270,7 @@ const AUDIENCES = [
 
 function AudienceSection() {
   return (
-    <section className="bg-card-alt py-[88px] max-[600px]:py-16">
+    <section data-track-section="audience" className="bg-card-alt py-[88px] max-[600px]:py-16">
       <div className="mx-auto max-w-[1040px] px-6">
         <Reveal>
           <SectionHeader centered kicker="Ideal Advertisers" heading="Built for the REI Ecosystem" />
@@ -291,7 +293,7 @@ function AudienceSection() {
 /* ─────────────────────────── APPLY (FORM) ─────────────────────────── */
 function ApplySection() {
   return (
-    <section id="apply" className="bg-cream py-[88px] max-[600px]:py-16">
+    <section id="apply" data-track-section="apply" className="bg-cream py-[88px] max-[600px]:py-16">
       <div className="mx-auto max-w-[900px] px-6">
         {/* Header — centered */}
         <Reveal>

@@ -73,7 +73,6 @@ export async function POST(request: NextRequest) {
     : tmpl.subject;
 
   const batch = crypto.randomUUID();
-  const advertiseTarget = `${PUBLIC_SITE_URL}/advertise`;
   let sent = 0;
   const failed: string[] = [];
 
@@ -110,6 +109,9 @@ export async function POST(request: NextRequest) {
         pipelineEmailId: row.id,
       });
       // Rewrite the Advertise button to a click-tracked URL for THIS recipient.
+      // The destination carries ?et=<row.id> so on-site engagement attributes
+      // back to this exact email.
+      const advertiseTarget = `${PUBLIC_SITE_URL}/advertise?et=${row.id}`;
       const html = rendered.html.replace(
         /<!--ADVERTISE_URL-->/g,
         wrapClick(PUBLIC_SITE_URL, row.id, advertiseTarget),
