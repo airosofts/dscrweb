@@ -51,6 +51,23 @@ export async function POST(request: NextRequest) {
       .from("engagement_sessions")
       .upsert(row, { onConflict: "session_key" });
 
+    // Plain-mode campaign sends have no open pixel or click redirect — the
+    // recipient arriving on-site with ?et= IS the click. Stamp the email so
+    // campaign stats stay accurate in both modes (no-ops if already stamped).
+    if (et) {
+      const now = new Date().toISOString();
+      await supabaseAdmin
+        .from("pipeline_emails")
+        .update({ status: "clicked", clicked_at: now })
+        .eq("id", et)
+        .is("clicked_at", null);
+      await supabaseAdmin
+        .from("pipeline_emails")
+        .update({ opened_at: now })
+        .eq("id", et)
+        .is("opened_at", null);
+    }
+
     return Response.json({ ok: true });
   } catch {
     return Response.json({ ok: false });
