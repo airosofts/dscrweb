@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_ADDRESS, PUBLIC_SITE_URL, REPLY_TO } from "@/lib/resend";
+import { resend, PUBLIC_SITE_URL, REPLY_TO } from "@/lib/resend";
 import { renderTemplate, wrapClick, type TemplateRow, type TemplateVars } from "@/lib/pipeline";
 
 /**
@@ -22,6 +22,11 @@ import { renderTemplate, wrapClick, type TemplateRow, type TemplateVars } from "
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEFAULT_SLUG = "lender-outreach";
+
+// Outreach comes from a real person, never a no-reply — spam filters and
+// humans both treat "noreply@" as a campaign flag.
+const OUTREACH_FROM =
+  process.env.OUTREACH_FROM_EMAIL || "Marcus at DSCR Calculator Pro <marcus@dscrcalculator.pro>";
 const MAX_RECIPIENTS = 200;
 
 export async function POST(request: NextRequest) {
@@ -118,7 +123,7 @@ export async function POST(request: NextRequest) {
       );
 
       const result = await resend.emails.send({
-        from: FROM_ADDRESS,
+        from: OUTREACH_FROM,
         to,
         replyTo,
         subject,

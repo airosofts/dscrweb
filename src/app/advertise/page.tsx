@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Reveal } from "@/components/RevealOnScroll";
 import { PhoneMockup } from "@/components/PhoneMockup";
 import { AdvertiseForm } from "@/components/AdvertiseForm";
+import { CalculatorDemo } from "@/components/CalculatorDemo";
 import EngagementTracker from "@/components/EngagementTracker";
 
 export const metadata: Metadata = {
@@ -18,6 +19,7 @@ export default function AdvertisePage() {
       <EngagementTracker />
       <Nav />
       <Hero />
+      <DemoSection />
       <StatsBar />
       <WhySection />
       <GeoSection />
@@ -78,6 +80,71 @@ function Hero() {
         </Reveal>
       </div>
     </section>
+  );
+}
+
+/* ─────────────────────────── LIVE DEMO ─────────────────────────── */
+function DemoSection() {
+  return (
+    <section className="relative overflow-hidden border-b border-rule bg-ink py-[72px] max-[600px]:py-14">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(155,123,78,0.03) 59px,rgba(155,123,78,0.03) 60px),repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(155,123,78,0.03) 59px,rgba(155,123,78,0.03) 60px)",
+        }}
+      />
+      <div className="relative z-[2] mx-auto max-w-[1040px] px-6">
+        <Reveal>
+          <div className="mx-auto mb-14 max-w-[600px] text-center">
+            <div className="mb-4 flex items-center justify-center gap-3 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-brass">
+              <span className="h-px w-7 bg-brass" aria-hidden />
+              See It Live
+              <span className="h-px w-7 bg-brass" aria-hidden />
+            </div>
+            <h2 className="mb-4 text-[32px] font-extrabold leading-[1.15] tracking-[-0.01em] text-cream max-[600px]:text-[26px]">
+              Exactly what your ad looks like in the app.
+            </h2>
+            <p className="text-[15px] leading-[1.7] text-muted">
+              This is the real DSCR Calculator investors use to run every deal. Your placement rides
+              along with it — as a rotating banner, and as a full-screen pop-up the moment they calculate.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="grid grid-cols-2 items-start gap-10 max-[720px]:grid-cols-1 max-[720px]:gap-16">
+          <Reveal>
+            <DemoCard
+              title="Banner Placement"
+              blurb="A rotating banner sits under the header on every screen — your brand in view the whole session."
+            >
+              <CalculatorDemo mode="banner" />
+            </DemoCard>
+          </Reveal>
+          <Reveal delay={120}>
+            <DemoCard
+              title="Full-Screen Pop-Up"
+              blurb="They enter the numbers, tap Calculate — and your ad is the very next thing they see, with a 5-second hold."
+            >
+              <CalculatorDemo mode="popup" />
+            </DemoCard>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DemoCard({ title, blurb, children }: { title: string; blurb: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="flex justify-center">{children}</div>
+      <div className="mt-7 max-w-[300px]">
+        <div className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-brass-pale">{title}</div>
+        <p className="mt-2 text-[13.5px] leading-[1.6] text-muted">{blurb}</p>
+      </div>
+    </div>
   );
 }
 
