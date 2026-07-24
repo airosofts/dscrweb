@@ -10,6 +10,7 @@ import { renderTemplate, wrapClick, type TemplateRow, type TemplateVars } from "
  *   Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>   (internal — admin portal)
  *   body: {
  *     recipients: Array<string | { email, name?, company? }>,
+ *     name?: string,              // internal campaign label (admin portal only)
  *     subject?: string,           // overrides template subject; supports {{firstName}}/{{companyName}}
  *     reply_to?: string[],        // where replies route (defaults to REPLY_TO)
  *     template_slug?: string,     // defaults to 'lender-outreach'
@@ -148,6 +149,8 @@ export async function POST(request: NextRequest) {
   // and redirect-wrapped links.
   const plain = body.plain !== false;
 
+  const campaignName = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
+
   const batch = crypto.randomUUID();
   let sent = 0;
   const failed: string[] = [];
@@ -168,6 +171,7 @@ export async function POST(request: NextRequest) {
           status: "processing",
           outreach_batch: batch,
           outreach_reply_to: replyTo.join(", "),
+          ...(campaignName ? { outreach_name: campaignName } : {}),
         })
         .select("id")
         .single();
