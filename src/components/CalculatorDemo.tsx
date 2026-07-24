@@ -1,6 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Inter } from 'next/font/google';
+
+// The Flutter app renders 100% in Inter (google_fonts) — the phone screen
+// must too, or every label/digit reads subtly wrong next to the real app.
+const inter = Inter({ subsets: ['latin'] });
 
 /**
  * Looping animated demo of the REAL DSCR Calculator app screen — same
@@ -185,7 +190,7 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
   const bannerAd = mode === 'banner' ? BANNER_ADS[banner] : BANNER_ADS[0];
 
   return (
-    <div className="relative" style={{ width: 320, filter: 'drop-shadow(0 30px 46px rgba(0,0,0,0.5))' }}>
+    <div className={`relative ${inter.className}`} style={{ width: 320, filter: 'drop-shadow(0 30px 46px rgba(0,0,0,0.5))' }}>
       <div className="relative rounded-[46px] p-[3px]" style={{ background: 'linear-gradient(145deg,#3a3a3f,#1a1a1d 25%,#2a2a2e 50%,#121214 75%,#2e2e32)' }}>
         <div className="relative rounded-[43px] p-[6px]" style={{ background: 'linear-gradient(145deg,#0a0a0b,#1c1c1f 50%,#0a0a0b)' }}>
           <div className="relative flex flex-col overflow-hidden rounded-[37px]" style={{ aspectRatio: '9 / 19.5', background: PARCH }}>
