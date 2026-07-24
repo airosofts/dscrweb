@@ -3,25 +3,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { Inter } from 'next/font/google';
 
-// The Flutter app renders 100% in Inter (google_fonts) — the phone screen
-// must too, or every label/digit reads subtly wrong next to the real app.
+// The Flutter app renders 100% in Inter (google_fonts).
 const inter = Inter({ subsets: ['latin'] });
 
 /**
- * Looping animated demo of the REAL DSCR Calculator app screen — same
- * sections, same fields, same order as the Flutter app (Property Details,
- * Loan Details, Closing Costs → CALCULATE DSCR → results).
+ * Looping animated demo of the REAL DSCR Calculator app screen.
  *
- * mode="popup":  fills every field quickly while auto-scrolling, taps
- *                CALCULATE DSCR, shows the result, then the full-screen
- *                pop-up ad appears with the 5-second dismiss counter.
- * mode="banner": form already filled; idles up and down the screen while
- *                the banner slot rotates ad creatives.
+ * Every metric below (heights, paddings, font sizes, letterspacing, radii,
+ * colors) is transcribed 1:1 from calculator_screen.dart / banner_ad_widget /
+ * popup_ad_widget and verified against a live iPhone 16 Pro simulator
+ * screenshot. The screen is laid out in the app's native 402pt coordinate
+ * space and scaled to fit the phone frame with a CSS transform, so ratios
+ * are exact by construction.
  *
- * Pure React/CSS — no video.
+ * mode="popup":  fills every field while auto-scrolling, taps CALCULATE DSCR,
+ *                shows the dark results card, then the popup ad (5s counter).
+ * mode="banner": form pre-filled; idles up and down while the banner rotates.
  */
 
-// App design tokens (from calculator_screen.dart)
+// App design tokens (constants in calculator_screen.dart)
 const INK = '#0A1628';
 const SLATE = '#3D5166';
 const BRASS = '#9B7B4E';
@@ -30,6 +30,14 @@ const BRASS_PALE = '#D4B896';
 const PARCH = '#F7F5F1';
 const LINEN = '#E4DED5';
 const MIST = '#7B90A4';
+const FOG = '#A8B8C6';
+const GREEN = '#6FCF97';
+
+// iPhone 16 Pro logical size (what the simulator runs at)
+const SCREEN_W = 402;
+const SCREEN_H = 874;
+const FRAME_W = 302; // inner screen width inside the bezel at 320px phone
+const S = FRAME_W / SCREEN_W;
 
 type Mode = 'banner' | 'popup';
 
@@ -54,17 +62,17 @@ const SECTIONS: SectionDef[] = [
   {
     title: 'Loan Details',
     fields: [
-      { id: 'price',  label: 'Purchase Price',          prefix: '$', target: 375000 },
+      { id: 'price',  label: 'Purchase Price / ARV',    prefix: '$', target: 375000 },
       { id: 'amount', label: 'Loan Amount',             prefix: '$', target: 300000 },
       { id: 'ltv',    label: 'Loan-to-Value (LTV)',     suffix: '%', target: 80 },
       { id: 'rate',   label: 'Interest Rate',           suffix: '%', target: 7.5, decimals: 1 },
-      { id: 'term',   label: 'Loan Term (Years)',                   target: 30 },
+      { id: 'term',   label: 'Loan Term (Years)',                    target: 30 },
     ],
   },
   {
     title: 'Closing Costs',
     fields: [
-      { id: 'orig',    label: 'Origination Fee',        prefix: '$', target: 3000 },
+      { id: 'orig',    label: 'Origination Fee (Fixed)', prefix: '$', target: 3000 },
       { id: 'lfees',   label: 'Loan Fees',              prefix: '$', target: 1500 },
       { id: 'tfees',   label: 'Title Fees',             prefix: '$', target: 1200 },
       { id: 'escrow',  label: 'Escrow',                 prefix: '$', target: 800 },
@@ -76,14 +84,30 @@ const SECTIONS: SectionDef[] = [
 ];
 const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
 
-const BANNER_ADS = [
-  { name: 'GENERIC LENDER FUNNEL', tag: 'DSCR loans · up to 80% LTV' },
-  { name: 'BRIDGE CAPITAL PARTNERS', tag: 'Close your deal in 21 days' },
-  { house: true as const },
-];
-
 const fullValues = () => Object.fromEntries(ALL_FIELDS.map((f) => [f.id, f.target]));
 const zeroValues = () => Object.fromEntries(ALL_FIELDS.map((f) => [f.id, 0]));
+
+/* Small inline icons (the app uses Material icons) */
+const RefreshIcon = ({ size, color }: { size: number; color: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12a9 9 0 1 1-2.64-6.36" /><polyline points="21 3 21 9 15 9" />
+  </svg>
+);
+const MegaphoneIcon = ({ size, color }: { size: number; color: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m3 11 18-5v12L3 13" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+  </svg>
+);
+const ArrowIcon = ({ size, color }: { size: number; color: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+  </svg>
+);
+const PdfIcon = ({ size, color }: { size: number; color: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+  </svg>
+);
 
 export function CalculatorDemo({ mode }: { mode: Mode }) {
   const [values, setValues] = useState<Record<string, number>>(
@@ -104,14 +128,14 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
   // Banner rotation (banner mode only)
   useEffect(() => {
     if (mode !== 'banner') return;
-    const t = setInterval(() => setBanner((b) => (b + 1) % BANNER_ADS.length), 2500);
+    const t = setInterval(() => setBanner((b) => (b + 1) % 3), 2600);
     return () => clearInterval(t);
   }, [mode]);
 
   useEffect(() => {
     alive.current = true;
     const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-    const scrollTo = (el: HTMLElement | null, offset = 64) => {
+    const scrollTo = (el: HTMLElement | null, offset = 90) => {
       const vp = viewportRef.current;
       if (vp && el) vp.scrollTo({ top: Math.max(0, el.offsetTop - offset), behavior: 'smooth' });
     };
@@ -121,7 +145,7 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
         const start = performance.now();
         const tick = (now: number) => {
           if (!alive.current) return resolve();
-          const t = Math.min(1, (now - start) / dur);
+          const t = Math.min(1, Math.max(0, (now - start) / dur));
           setVal(id, target * (1 - Math.pow(1 - t, 3)));
           if (t < 1) requestAnimationFrame(tick);
           else resolve();
@@ -132,13 +156,11 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
     if (mode === 'popup') {
       (async () => {
         while (alive.current) {
-          // reset
           setValues(zeroValues());
           setActiveId(null); setPressed(false); setShowResult(false); setPopup(false); setCount(5);
           viewportRef.current?.scrollTo({ top: 0 });
           await sleep(800); if (!alive.current) break;
 
-          // fill EVERY field quickly, auto-scrolling as we go
           for (const f of ALL_FIELDS) {
             if (!alive.current) break;
             setActiveId(f.id);
@@ -149,29 +171,27 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
           setActiveId(null);
           if (!alive.current) break;
 
-          // calculate
-          scrollTo(buttonRef.current, 140);
+          scrollTo(buttonRef.current, 190);
           await sleep(500);
           setPressed(true); await sleep(350); setPressed(false);
           setShowResult(true);
           await sleep(120);
-          scrollTo(resultRef.current, 90);
+          scrollTo(resultRef.current, 110);
           await sleep(1600);
 
-          // the pop-up ad
           setPopup(true);
           for (let n = 5; n >= 1; n--) { setCount(n); await sleep(1000); if (!alive.current) break; }
-          await sleep(400);
+          setCount(0);
+          await sleep(700);
           setPopup(false);
           await sleep(600);
         }
       })();
     } else {
-      // banner mode: gentle idle scroll down to results and back, forever
       (async () => {
         await sleep(600);
         while (alive.current) {
-          scrollTo(resultRef.current, 90);
+          scrollTo(resultRef.current, 110);
           await sleep(3200); if (!alive.current) break;
           viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
           await sleep(3200);
@@ -181,107 +201,215 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
     return () => { alive.current = false; };
   }, [mode]);
 
-  // The app shows raw digits — "$ 3500", no thousands separators.
-  const fmt = (f: FieldDef, v: number) => {
-    if (f.suffix === '%') return `${(f.decimals ? v.toFixed(f.decimals) : Math.round(v))}%`;
-    if (f.prefix === '$') return '$' + Math.round(v);
-    return String(Math.round(v));
-  };
-  const bannerAd = mode === 'banner' ? BANNER_ADS[banner] : BANNER_ADS[0];
+  // Inputs show raw digits exactly as typed in the app — no thousands commas.
+  const fmt = (f: FieldDef, v: number) =>
+    f.decimals ? v.toFixed(f.decimals) : String(Math.round(v));
 
   return (
     <div className={`relative ${inter.className}`} style={{ width: 320, filter: 'drop-shadow(0 30px 46px rgba(0,0,0,0.5))' }}>
       <div className="relative rounded-[46px] p-[3px]" style={{ background: 'linear-gradient(145deg,#3a3a3f,#1a1a1d 25%,#2a2a2e 50%,#121214 75%,#2e2e32)' }}>
         <div className="relative rounded-[43px] p-[6px]" style={{ background: 'linear-gradient(145deg,#0a0a0b,#1c1c1f 50%,#0a0a0b)' }}>
-          <div className="relative flex flex-col overflow-hidden rounded-[37px]" style={{ aspectRatio: '9 / 19.5', background: PARCH }}>
+          {/* screen: native 402x874pt canvas scaled to the frame */}
+          <div className="relative overflow-hidden rounded-[37px]" style={{ width: FRAME_W, height: Math.round(SCREEN_H * S), background: PARCH }}>
+            <div style={{ width: SCREEN_W, height: SCREEN_H, transform: `scale(${S})`, transformOrigin: 'top left', display: 'flex', flexDirection: 'column', background: PARCH, position: 'relative', textAlign: 'left' }}>
 
-            {/* ── Status bar (cream, like the app) ── */}
-            <div className="flex shrink-0 items-end justify-between px-5 pb-1 pt-4" style={{ background: PARCH }}>
-              <span className="text-[10px] font-bold" style={{ color: '#000' }}>2:18</span>
-              <span className="text-[8px]" style={{ color: '#000' }}>▮▮ ⚡</span>
-            </div>
+              {/* ── Status bar (62pt incl. island row) ── */}
+              <div style={{ height: 62, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 40px 0' }}>
+                <span style={{ fontSize: 17, fontWeight: 600, color: '#000' }}>9:41</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {/* cellular / wifi / battery */}
+                  <svg width="18" height="12" viewBox="0 0 18 12"><g fill="#000"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="6" rx="1"/><rect x="10" y="2.5" width="3" height="8.5" rx="1"/><rect x="15" y="0" width="3" height="11" rx="1"/></g></svg>
+                  <svg width="17" height="12" viewBox="0 0 17 12" fill="#000"><path d="M8.5 9.5a2 2 0 0 1 2 2l-2 .5-2-.5a2 2 0 0 1 2-2zM8.5 5.6c1.9 0 3.6.7 4.9 1.9l-1.4 1.5a4.9 4.9 0 0 0-7 0L3.6 7.5a7 7 0 0 1 4.9-1.9zM8.5 1.5c3 0 5.8 1.2 7.9 3.1L15 6.1a9 9 0 0 0-13 0L.6 4.6A11.2 11.2 0 0 1 8.5 1.5z"/></svg>
+                  <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" fill="none" stroke="#000" strokeOpacity="0.35"/><rect x="2" y="2" width="18" height="8" rx="2" fill="#000"/><path d="M23 4v4a2.2 2.2 0 0 0 0-4z" fill="#000" fillOpacity="0.4"/></svg>
+                </span>
+              </div>
 
-            {/* ── App header (ink band) ── */}
-            <div className="flex shrink-0 items-center justify-between px-4 py-2.5" style={{ background: INK }}>
-              <span className="text-[10.5px] font-semibold tracking-[0.12em] text-white">DSCR CALCULATOR PRO</span>
-              <span className="flex h-6 w-6 items-center justify-center rounded-sm border text-[12px]" style={{ borderColor: 'rgba(155,123,78,0.35)', color: BRASS_LIGHT }}>⟳</span>
-            </div>
+              {/* ── Header — ink, padding 20/14, title 13/600/ls1 ── */}
+              <div style={{ background: INK, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1, color: '#fff' }}>DSCR CALCULATOR PRO</span>
+                <span style={{ padding: '7px 10px', border: '1px solid rgba(155,123,78,0.35)', borderRadius: 3, display: 'flex' }}>
+                  <RefreshIcon size={18} color={BRASS_LIGHT} />
+                </span>
+              </div>
+              {/* brass accent hairline under header */}
+              <div style={{ height: 1, background: 'rgba(155,123,78,0.3)' }} />
 
-            {/* ── Banner ad slot (on cream, like the app) ── */}
-            <div className="shrink-0 px-3 pb-1 pt-2.5" style={{ background: PARCH }}>
-              <BannerSlot ad={bannerAd} pulse={mode === 'banner'} />
-            </div>
+              {/* ── Banner ad slot — full-width, flush (50pt creative / 56pt house) ── */}
+              <BannerSlot variant={mode === 'banner' ? banner : 2} />
 
-            {/* ── Scrollable content ── */}
-            <div ref={viewportRef} className="relative flex-1 overflow-hidden px-3 pb-5 pt-3" style={{ background: PARCH }}>
-              <SectionLabel>Loan Purpose</SectionLabel>
-              <InkToggle options={['Purchase', 'Refinance']} />
-              <div className="h-3" />
-              <SectionLabel>Loan Type</SectionLabel>
-              <InkToggle options={['Amortizing', 'Interest Only']} />
-              <div className="my-3.5" style={{ height: 1, background: LINEN }} />
+              {/* ── Scrollable content — padding 16/16/40 ── */}
+              <div ref={viewportRef} style={{ flex: 1, overflow: 'hidden', padding: '16px 16px 40px', position: 'relative' }}>
+                <div style={{ height: 4 }} />
+                <SectionLabel>Loan Purpose</SectionLabel>
+                <div style={{ height: 7 }} />
+                <InkToggle options={['Purchase', 'Refinance']} />
+                <div style={{ height: 18 }} />
+                <SectionLabel>Loan Type</SectionLabel>
+                <div style={{ height: 7 }} />
+                <InkToggle options={['Amortizing', 'Interest Only']} />
+                <div style={{ padding: '18px 0' }}><div style={{ height: 1, background: LINEN }} /></div>
 
-              {SECTIONS.map((s) => (
-                <SectionCard key={s.title} title={s.title}>
-                  {s.fields.map((f) => (
-                    <div key={f.id} ref={(el) => { fieldRefs.current[f.id] = el; }}>
-                      <AppField label={f.label} value={fmt(f, values[f.id] ?? 0)} activeNow={activeId === f.id} />
-                    </div>
-                  ))}
-                </SectionCard>
-              ))}
-
-              <button
-                ref={buttonRef}
-                className="mt-1 w-full rounded py-2.5 text-center text-[11px] font-semibold tracking-[0.09em] text-white transition-transform"
-                style={{ background: INK, transform: pressed ? 'scale(0.97)' : 'none' }}
-              >
-                CALCULATE DSCR
-              </button>
-
-              {/* results (matches the app's result rows) */}
-              <div ref={resultRef} className={`overflow-hidden transition-all duration-500 ${showResult ? 'mt-3 max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}>
-                <div className="rounded-lg border bg-white p-3" style={{ borderColor: LINEN }}>
-                  <div className="text-center">
-                    <div className="text-[8px] font-semibold uppercase tracking-[0.16em]" style={{ color: MIST }}>DSCR</div>
-                    <div className="mt-0.5 text-[28px] font-extrabold leading-none" style={{ color: INK }}>1.28</div>
-                    <div className="mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[9px] font-bold" style={{ background: 'rgba(111,207,151,0.18)', color: '#2D6A4F' }}>
-                      ● Strong Coverage
-                    </div>
+                {SECTIONS.map((s, si) => (
+                  <div key={s.title}>
+                    <BrassCard title={s.title}>
+                      {s.title === 'Closing Costs' && (
+                        <div style={{ paddingBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1, color: MIST }}>ORIGINATION FEE</div>
+                          <div style={{ height: 5 }} />
+                          <SubToggle options={['Fixed $', 'Percent %']} />
+                        </div>
+                      )}
+                      {s.fields.map((f, fi) => (
+                        <div key={f.id} ref={(el) => { fieldRefs.current[f.id] = el; }}>
+                          <AppField
+                            label={f.label}
+                            prefix={f.prefix}
+                            suffix={f.suffix}
+                            value={fmt(f, values[f.id] ?? 0)}
+                            activeNow={activeId === f.id}
+                            isLast={fi === s.fields.length - 1}
+                          />
+                        </div>
+                      ))}
+                    </BrassCard>
+                    {si < SECTIONS.length - 1 && <div style={{ height: 14 }} />}
                   </div>
-                  <div className="mt-2.5 border-t pt-2" style={{ borderColor: LINEN }}>
-                    <ResultRow label="Monthly Payment (PITIA)" value="$1,875" />
-                    <ResultRow label="Monthly Cashflow" value="+$525" green />
-                    <ResultRow label="Cap Rate" value="6.2%" />
+                ))}
+
+                <div style={{ height: 20 }} />
+                {/* CALCULATE DSCR — 48pt, ink, radius 4, 13/600/ls1 */}
+                <button
+                  ref={buttonRef}
+                  style={{
+                    width: '100%', height: 48, background: INK, color: '#fff', border: 'none',
+                    borderRadius: 4, fontSize: 13, fontWeight: 600, letterSpacing: 1,
+                    fontFamily: 'inherit', transition: 'transform 150ms',
+                    transform: pressed ? 'scale(0.97)' : 'none', cursor: 'default',
+                  }}
+                >
+                  CALCULATE DSCR
+                </button>
+
+                {/* ── Results — DARK ink card with brass grid texture ── */}
+                <div ref={resultRef} style={{ overflow: 'hidden', transition: 'all 500ms', maxHeight: showResult ? 900 : 0, opacity: showResult ? 1 : 0 }}>
+                  <div style={{ height: 18 }} />
+                  <div style={{
+                    background: INK, border: '1px solid rgba(155,123,78,0.2)', borderRadius: 4, padding: 18,
+                    backgroundImage:
+                      'repeating-linear-gradient(0deg, rgba(212,184,150,0.045) 0 1px, transparent 1px 24px),' +
+                      'repeating-linear-gradient(90deg, rgba(212,184,150,0.045) 0 1px, transparent 1px 24px)',
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color: BRASS_PALE }}>RESULTS</div>
+                    <div style={{ height: 10 }} />
+                    <div style={{ height: 1, background: 'rgba(212,184,150,0.15)' }} />
+
+                    <ResRow label="DSCR">
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 26, fontWeight: 300, color: BRASS_PALE, lineHeight: 1.1 }}>1.25</div>
+                        <div style={{ height: 4 }} />
+                        <span style={{
+                          display: 'inline-block', padding: '3px 8px', borderRadius: 2,
+                          background: 'rgba(111,207,151,0.1)', border: '1px solid rgba(111,207,151,0.35)',
+                          fontSize: 10, fontWeight: 600, letterSpacing: 0.8, color: GREEN,
+                        }}>✓ STRONG COVERAGE</span>
+                      </div>
+                    </ResRow>
+                    <ResDivider />
+                    <ResRow label="Monthly Payment (PITIA)">
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>$2,698</div>
+                        <div style={{ fontSize: 11, fontWeight: 400, color: FOG }}>P&I: $2,098</div>
+                      </div>
+                    </ResRow>
+                    <ResDivider />
+                    <ResRow label="Monthly Cashflow">
+                      <span style={{ fontSize: 15, fontWeight: 600, color: GREEN }}>$522</span>
+                    </ResRow>
+                    <ResDivider />
+                    <ResRow label="Annual Cash Flow">
+                      <span style={{ fontSize: 15, fontWeight: 600, color: GREEN }}>$6,268</span>
+                    </ResRow>
+                    <ResDivider />
+                    <ResRow label="Net Operating Income">
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>$31,440</div>
+                        <div style={{ fontSize: 11, fontWeight: 400, color: FOG }}>Annual</div>
+                      </div>
+                    </ResRow>
+                    <ResDivider />
+                    <ResRow label="Cap Rate">
+                      <span style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>8.38%</span>
+                    </ResRow>
+                  </div>
+
+                  <div style={{ height: 12 }} />
+                  {/* EXPORT PDF — outlined, 44pt */}
+                  <div style={{
+                    height: 44, border: `1.5px solid ${LINEN}`, borderRadius: 4,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'transparent',
+                  }}>
+                    <PdfIcon size={16} color={INK} />
+                    <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.8, color: INK }}>EXPORT PDF</span>
                   </div>
                 </div>
-              </div>
-              <div className="h-4" />
-            </div>
 
-            {/* Dynamic Island */}
-            <div className="absolute left-1/2 top-[7px] z-30 h-[20px] w-[76px] -translate-x-1/2 rounded-full bg-black" />
-
-            {/* ── POP-UP AD (half screen, like the app) ── */}
-            <div className={`absolute inset-0 z-20 flex items-center justify-center px-3 transition-opacity duration-300 ${popup ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
-              <div className="absolute inset-0 bg-black/60" />
-              <div
-                className={`relative w-full overflow-hidden rounded-2xl bg-white shadow-2xl transition-all duration-300 ${popup ? 'translate-y-0' : 'translate-y-6'}`}
-                style={{ height: '50%' }}
-              >
-                <div className="absolute left-2 top-2 z-10 rounded bg-black/50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.14em] text-white">Ad</div>
-                <div className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-[11px] font-bold text-white">{count}</div>
-                <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center" style={{ background: `linear-gradient(160deg,#12233b,${INK})` }}>
-                  <div className="text-[8px] font-semibold uppercase tracking-[0.22em]" style={{ color: BRASS_PALE }}>Your Ad Here</div>
-                  <div className="text-[15px] font-extrabold leading-tight text-white">Generic Lender<br/>Funnel LLC</div>
-                  <div className="text-[9px] leading-snug" style={{ color: MIST }}>DSCR loans up to 80% LTV — close in 21 days.</div>
-                  <div className="mt-1 rounded-md px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: BRASS }}>Get Pre-Qualified →</div>
+                <div style={{ height: 12 }} />
+                {/* ADVERTISE WITH US — always visible, brass outline, 44pt */}
+                <div style={{
+                  height: 44, border: '1.5px solid rgba(155,123,78,0.4)', borderRadius: 4,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}>
+                  <MegaphoneIcon size={16} color={BRASS} />
+                  <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.8, color: BRASS }}>ADVERTISE WITH US</span>
                 </div>
               </div>
-            </div>
 
-            {/* home indicator */}
-            <div className="absolute bottom-1.5 left-1/2 z-30 h-1 w-[84px] -translate-x-1/2 rounded-full" style={{ background: 'rgba(10,22,40,0.22)' }} />
+              {/* ── POPUP AD — width-32, 50% height, radius 16 (popup_ad_widget) ── */}
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'opacity 300ms', opacity: popup ? 1 : 0, pointerEvents: 'none',
+              }}>
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
+                <div style={{
+                  position: 'relative', width: SCREEN_W - 32, height: SCREEN_H * 0.5,
+                  background: '#fff', borderRadius: 16, overflow: 'hidden',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.3)',
+                  transition: 'transform 300ms cubic-bezier(0.33,1,0.68,1)',
+                  transform: popup ? 'translateY(0)' : 'translateY(40px)',
+                }}>
+                  {/* the ad creative */}
+                  <div style={{
+                    position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', gap: 10, textAlign: 'center',
+                    background: `linear-gradient(160deg,#132540,${INK})`, padding: 24,
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 3, color: BRASS_PALE }}>YOUR AD HERE</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.15, color: '#fff' }}>Generic Lender<br />Funnel LLC</div>
+                    <div style={{ fontSize: 13, lineHeight: 1.4, color: MIST }}>DSCR loans up to 80% LTV.<br />Close in 21 days.</div>
+                    <div style={{ marginTop: 6, padding: '10px 18px', borderRadius: 5, background: BRASS, color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: 0.8 }}>
+                      GET PRE-QUALIFIED →
+                    </div>
+                  </div>
+                  {/* AD chip — top-left 8,8 */}
+                  <span style={{
+                    position: 'absolute', top: 8, left: 8, padding: '3px 8px', borderRadius: 4,
+                    background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: 1,
+                  }}>AD</span>
+                  {/* countdown circle — top-right 8,8, 32pt */}
+                  <span style={{
+                    position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: '50%',
+                    background: count === 0 ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontSize: count === 0 ? 16 : 12, fontWeight: 600,
+                  }}>{count === 0 ? '×' : count}</span>
+                </div>
+              </div>
+
+              {/* Dynamic Island */}
+              <div style={{ position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)', width: 125, height: 37, borderRadius: 20, background: '#000', zIndex: 30 }} />
+              {/* home indicator */}
+              <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', width: 140, height: 5, borderRadius: 3, background: 'rgba(0,0,0,0.85)', zIndex: 30 }} />
+            </div>
           </div>
         </div>
       </div>
@@ -289,89 +417,149 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
   );
 }
 
-/* ── App-matching pieces ── */
+/* ── Banner slot — exact banner_ad_widget metrics ── */
 
-function BannerSlot({ ad, pulse }: { ad: (typeof BANNER_ADS)[number]; pulse: boolean }) {
-  if ('house' in ad) {
+function BannerSlot({ variant }: { variant: number }) {
+  // variant 0/1: paid creatives (50pt, cover on ink) — variant 2: house ad (56pt dashed)
+  if (variant === 0) {
     return (
-      <div className="flex h-[40px] items-center justify-center gap-1.5 rounded-sm"
-        style={{ background: PARCH, border: `1.5px dashed rgba(155,123,78,0.55)`, outline: pulse ? '2px solid rgba(155,123,78,0.2)' : 'none' }}>
-        <span className="text-[10px]" style={{ color: BRASS }}>📣</span>
-        <span className="text-[8px] font-semibold uppercase tracking-[0.12em]" style={{ color: BRASS }}>Your Ad Here — Advertise With Us</span>
-        <span className="text-[10px]" style={{ color: BRASS }}>→</span>
+      <div style={{ height: 50, background: INK, display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px' }}>
+        <div style={{ width: 34, height: 34, borderRadius: 4, background: BRASS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>G</span>
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>GENERIC LENDER FUNNEL</div>
+          <div style={{ fontSize: 10, color: BRASS_PALE }}>DSCR loans · up to 80% LTV</div>
+        </div>
+        <div style={{ padding: '6px 12px', borderRadius: 4, background: BRASS, color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: 0.5, flexShrink: 0 }}>APPLY</div>
       </div>
     );
   }
-  return (
-    <div className="flex h-[40px] items-center gap-2.5 px-3"
-      style={{ background: 'linear-gradient(120deg,#12233b,#0a1628)', outline: pulse ? '2px solid rgba(155,123,78,0.3)' : 'none' }}>
-      <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded" style={{ background: BRASS }}>
-        <span className="text-[10px] font-extrabold text-white">L</span>
+  if (variant === 1) {
+    return (
+      <div style={{ height: 50, background: '#fff', display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', borderBottom: `1px solid ${LINEN}` }}>
+        <div style={{ width: 34, height: 34, borderRadius: 17, background: '#C0392B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>B</span>
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Bridge Capital Partners</div>
+          <div style={{ fontSize: 10, color: '#777' }}>Close your next deal in 21 days</div>
+        </div>
+        <div style={{ padding: '7px 12px', borderRadius: 4, background: '#C0392B', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+          Get Rates <ArrowIcon size={10} color="#fff" />
+        </div>
       </div>
-      <div className="min-w-0">
-        <div className="truncate text-[9px] font-bold uppercase tracking-[0.06em] text-white">{ad.name}</div>
-        <div className="truncate text-[7.5px]" style={{ color: BRASS_PALE }}>{ad.tag}</div>
+    );
+  }
+  // house fallback: 56pt, parchment, dashed brass box (padding 16/6)
+  return (
+    <div style={{ height: 56, background: PARCH, padding: '6px 16px' }}>
+      <div style={{
+        height: '100%', border: '1px dashed rgba(155,123,78,0.55)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+      }}>
+        <MegaphoneIcon size={14} color="rgba(155,123,78,0.7)" />
+        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1, color: BRASS }}>YOUR AD HERE — ADVERTISE WITH US</span>
+        <ArrowIcon size={12} color="rgba(155,123,78,0.6)" />
       </div>
     </div>
   );
 }
 
+/* ── Exact widget transcriptions ── */
+
+// _SectionLabel: 10/600/brass/ls1.2, padding-left 2
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: BRASS }}>{children}</div>;
+  return <div style={{ paddingLeft: 2, fontSize: 10, fontWeight: 600, letterSpacing: 1.2, color: BRASS, textTransform: 'uppercase' }}>{children}</div>;
 }
 
+// _InkToggle: h42, ink border 1.5, radius 4, halves split by 1px ink,
+// text 12/600/ls0.5 — selected ink/white, unselected white/SLATE
 function InkToggle({ options }: { options: string[] }) {
   return (
-    <div className="flex overflow-hidden rounded-lg" style={{ border: `1.5px solid ${INK}`, background: '#fff' }}>
+    <div style={{ height: 42, border: `1.5px solid ${INK}`, borderRadius: 4, overflow: 'hidden', display: 'flex', background: '#fff' }}>
       {options.map((o, i) => (
-        <div key={o} className="flex-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-[0.06em]"
-          style={i === 0 ? { background: INK, color: '#fff' } : { color: INK }}>
-          {o}
-        </div>
+        <div key={o} style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: i === 0 ? INK : '#fff',
+          borderRight: i < options.length - 1 ? `1px solid ${INK}` : 'none',
+          fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase',
+          color: i === 0 ? '#fff' : SLATE,
+        }}>{o}</div>
       ))}
     </div>
   );
 }
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+// _SubToggle: h32, linen border, radius 3, text ls0.6
+function SubToggle({ options }: { options: string[] }) {
   return (
-    <div className="mb-3.5 overflow-hidden rounded-xl bg-white" style={{ borderLeft: `5px solid ${BRASS}`, boxShadow: '0 1px 3px rgba(10,22,40,0.06)' }}>
-      <div className="px-4 pb-2 pt-3 text-[9px] font-semibold uppercase tracking-[0.16em]" style={{ color: MIST }}>{title}</div>
-      <div className="mx-4" style={{ height: 1, background: LINEN }} />
-      <div className="px-4 pb-3.5 pt-3">{children}</div>
+    <div style={{ height: 32, border: `1px solid ${LINEN}`, borderRadius: 3, overflow: 'hidden', display: 'flex', background: '#fff' }}>
+      {options.map((o, i) => (
+        <div key={o} style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: i === 0 ? INK : '#fff',
+          borderRight: i < options.length - 1 ? `1px solid ${LINEN}` : 'none',
+          fontSize: 11, fontWeight: 600, letterSpacing: 0.6,
+          color: i === 0 ? '#fff' : SLATE,
+        }}>{o}</div>
+      ))}
     </div>
   );
 }
 
-function AppField({ label, value, activeNow }: { label: string; value: string; activeNow: boolean }) {
-  // Split "$3,500" / "8%" into prefix, number, suffix — the app renders the
-  // $ in mist before the value and the % right-aligned in mist.
-  const prefix = value.startsWith('$') ? '$' : null;
-  const suffix = value.endsWith('%') ? '%' : null;
-  const num = value.replace(/^\$/, '').replace(/%$/, '');
+// _BrassCard: white, 1px linen border, radius 4, 3px brass left border,
+// padding LTRB(16,18,18,18), title 10/700/mist/ls1.2, divider, gap 14
+function BrassCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mb-3">
-      <div className="mb-1.5 text-[8px] font-semibold uppercase tracking-[0.14em]" style={{ color: MIST }}>{label}</div>
-      <div className="flex items-center rounded-[10px] px-3.5 py-2.5 text-[14px] font-semibold"
-        style={{
-          background: '#F1EDE6', color: INK,
-          border: `1.5px solid ${activeNow ? BRASS : 'transparent'}`,
-          boxShadow: activeNow ? '0 0 0 2px rgba(155,123,78,0.15)' : 'none',
-        }}>
-        {prefix && <span className="mr-1.5 text-[13px] font-normal" style={{ color: MIST }}>{prefix}</span>}
-        <span>{num}</span>
-        {activeNow && <span className="ml-0.5 inline-block h-3.5 w-[2px] animate-pulse" style={{ background: BRASS }} />}
-        {suffix && <span className="ml-auto text-[13px] font-normal" style={{ color: MIST }}>{suffix}</span>}
+    <div style={{
+      background: '#fff', border: `1px solid ${LINEN}`, borderLeft: `3px solid ${BRASS}`,
+      borderRadius: 4, padding: '18px 18px 18px 16px',
+    }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color: MIST, textTransform: 'uppercase' }}>{title}</div>
+      <div style={{ height: 10 }} />
+      <div style={{ height: 1, background: LINEN }} />
+      <div style={{ height: 14 }} />
+      {children}
+    </div>
+  );
+}
+
+// _Field: label 10/600/mist/ls1 → 5pt gap → box: parchment bg, 1px linen
+// border (brass on focus), radius 3, 12pt h-padding, 37pt tall;
+// prefix/suffix 14/400/mist; value 15/500/ink. 12pt below (except last).
+function AppField({ label, value, prefix, suffix, activeNow, isLast }: {
+  label: string; value: string; prefix?: string; suffix?: string; activeNow: boolean; isLast: boolean;
+}) {
+  return (
+    <div style={{ paddingBottom: isLast ? 0 : 12 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1, color: MIST, textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ height: 5 }} />
+      <div style={{
+        height: 37, display: 'flex', alignItems: 'center', padding: '0 12px',
+        background: PARCH, borderRadius: 3,
+        border: `1px solid ${activeNow ? BRASS : LINEN}`,
+        transition: 'border-color 120ms',
+      }}>
+        {prefix && <span style={{ fontSize: 14, fontWeight: 400, color: MIST, marginRight: 4 }}>{prefix}</span>}
+        <span style={{ fontSize: 15, fontWeight: 500, color: INK }}>{value}</span>
+        {activeNow && <span className="animate-pulse" style={{ display: 'inline-block', width: 1.5, height: 17, background: BRASS, marginLeft: 1 }} />}
+        {suffix && <span style={{ fontSize: 14, fontWeight: 400, color: MIST, marginLeft: 'auto' }}>{suffix}</span>}
       </div>
     </div>
   );
 }
 
-function ResultRow({ label, value, green }: { label: string; value: string; green?: boolean }) {
+// _ResRow: vertical padding 9, label 10/500/FOG/ls0.8 uppercase
+function ResRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-1">
-      <span className="text-[9px]" style={{ color: SLATE }}>{label}</span>
-      <span className="text-[10.5px] font-bold" style={{ color: green ? '#2D6A4F' : INK }}>{value}</span>
+    <div style={{ padding: '9px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: 0.8, color: FOG, textTransform: 'uppercase', lineHeight: 1.3, maxWidth: '55%' }}>{label}</span>
+      {children}
     </div>
   );
+}
+
+function ResDivider() {
+  return <div style={{ height: 1, background: 'rgba(212,184,150,0.15)' }} />;
 }
