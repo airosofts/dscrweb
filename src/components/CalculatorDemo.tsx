@@ -109,7 +109,13 @@ const PdfIcon = ({ size, color }: { size: number; color: string }) => (
   </svg>
 );
 
-export function CalculatorDemo({ mode }: { mode: Mode }) {
+export function CalculatorDemo({ mode, active = true, onCycleEnd }: {
+  mode: Mode;
+  /** When false, the demo holds still (reset, top of screen) until its turn. */
+  active?: boolean;
+  /** Called after one complete animation cycle finishes. */
+  onCycleEnd?: () => void;
+}) {
   const [values, setValues] = useState<Record<string, number>>(
     mode === 'banner' ? fullValues() : zeroValues());
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -124,11 +130,15 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const alive = useRef(true);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const onCycleEndRef = useRef(onCycleEnd);
+  onCycleEndRef.current = onCycleEnd;
 
   // Banner rotation (banner mode only)
   useEffect(() => {
     if (mode !== 'banner') return;
-    const t = setInterval(() => setBanner((b) => (b + 1) % 3), 2600);
+    const t = setInterval(() => { if (activeRef.current) setBanner((b) => (b + 1) % 3); }, 2600);
     return () => clearInterval(t);
   }, [mode]);
 
@@ -153,12 +163,18 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
         requestAnimationFrame(tick);
       });
 
+    const waitForTurn = async () => {
+      while (alive.current && !activeRef.current) await sleep(150);
+    };
+
     if (mode === 'popup') {
       (async () => {
         while (alive.current) {
+          // reset to a clean idle frame, then hold until it's this demo's turn
           setValues(zeroValues());
           setActiveId(null); setPressed(false); setShowResult(false); setPopup(false); setCount(5);
           viewportRef.current?.scrollTo({ top: 0 });
+          await waitForTurn(); if (!alive.current) break;
           await sleep(800); if (!alive.current) break;
 
           for (const f of ALL_FIELDS) {
@@ -185,16 +201,21 @@ export function CalculatorDemo({ mode }: { mode: Mode }) {
           await sleep(700);
           setPopup(false);
           await sleep(600);
+          onCycleEndRef.current?.();
         }
       })();
     } else {
       (async () => {
         await sleep(600);
         while (alive.current) {
+          // idle at the top until it's this demo's turn
+          await waitForTurn(); if (!alive.current) break;
+          await sleep(400);
           scrollTo(resultRef.current, 110);
           await sleep(3200); if (!alive.current) break;
           viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
           await sleep(3200);
+          onCycleEndRef.current?.();
         }
       })();
     }
@@ -562,4 +583,53 @@ function ResRow({ label, children }: { label: string; children: React.ReactNode 
 
 function ResDivider() {
   return <div style={{ height: 1, background: 'rgba(212,184,150,0.15)' }} />;
+}
+
+
+/* ── Showcase: runs the two demos strictly one at a time ────────────────
+   Roland: simultaneous animations read as chaos — one completes, brief
+   pause, then the other begins. */
+export function DemoShowcase() {
+  const [turn, setTurn] = useState<Mode>('banner');
+
+  const handOff = (next: Mode) => {
+    // brief breather between acts
+    setTimeout(() => setTurn(next), 1100);
+  };
+
+  return (
+    <div className="grid grid-cols-2 items-start gap-10 max-[720px]:grid-cols-1 max-[720px]:gap-16">
+      <ShowcaseCard
+        title="Banner Placement"
+        blurb="A rotating banner sits under the header on every screen — your brand in view the whole session."
+        dimmed={turn !== 'banner'}
+      >
+        <CalculatorDemo mode="banner" active={turn === 'banner'} onCycleEnd={() => handOff('popup')} />
+      </ShowcaseCard>
+      <ShowcaseCard
+        title="Full-Screen Pop-Up"
+        blurb="They enter the numbers, tap Calculate — and your ad is the very next thing they see, with a 5-second hold."
+        dimmed={turn !== 'popup'}
+      >
+        <CalculatorDemo mode="popup" active={turn === 'popup'} onCycleEnd={() => handOff('banner')} />
+      </ShowcaseCard>
+    </div>
+  );
+}
+
+function ShowcaseCard({ title, blurb, dimmed, children }: {
+  title: string; blurb: string; dimmed: boolean; children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="flex flex-col items-center text-center transition-all duration-700"
+      style={{ opacity: dimmed ? 0.55 : 1, transform: dimmed ? 'scale(0.98)' : 'none' }}
+    >
+      <div className="flex justify-center">{children}</div>
+      <div className="mt-7 max-w-[300px]">
+        <div className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-brass-pale">{title}</div>
+        <p className="mt-2 text-[13.5px] leading-[1.6] text-muted">{blurb}</p>
+      </div>
+    </div>
+  );
 }

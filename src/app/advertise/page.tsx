@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Reveal } from "@/components/RevealOnScroll";
 import { PhoneMockup } from "@/components/PhoneMockup";
 import { AdvertiseForm } from "@/components/AdvertiseForm";
-import { CalculatorDemo } from "@/components/CalculatorDemo";
+import { DemoShowcase } from "@/components/CalculatorDemo";
 import EngagementTracker from "@/components/EngagementTracker";
 
 export const metadata: Metadata = {
@@ -113,40 +113,14 @@ function DemoSection() {
           </div>
         </Reveal>
 
-        <div className="grid grid-cols-2 items-start gap-10 max-[720px]:grid-cols-1 max-[720px]:gap-16">
-          <Reveal>
-            <DemoCard
-              title="Banner Placement"
-              blurb="A rotating banner sits under the header on every screen — your brand in view the whole session."
-            >
-              <CalculatorDemo mode="banner" />
-            </DemoCard>
-          </Reveal>
-          <Reveal delay={120}>
-            <DemoCard
-              title="Full-Screen Pop-Up"
-              blurb="They enter the numbers, tap Calculate — and your ad is the very next thing they see, with a 5-second hold."
-            >
-              <CalculatorDemo mode="popup" />
-            </DemoCard>
-          </Reveal>
-        </div>
+        <Reveal>
+          <DemoShowcase />
+        </Reveal>
       </div>
     </section>
   );
 }
 
-function DemoCard({ title, blurb, children }: { title: string; blurb: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <div className="flex justify-center">{children}</div>
-      <div className="mt-7 max-w-[300px]">
-        <div className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-brass-pale">{title}</div>
-        <p className="mt-2 text-[13.5px] leading-[1.6] text-muted">{blurb}</p>
-      </div>
-    </div>
-  );
-}
 
 /* ─────────────────────────── VALUE BAR ─────────────────────────── */
 const VALUE_POINTS = [
