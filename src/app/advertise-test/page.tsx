@@ -3,7 +3,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Reveal } from "@/components/RevealOnScroll";
 import { PhoneMockup } from "@/components/PhoneMockup";
-import { AdvertiseForm } from "@/components/AdvertiseForm";
+import { CompactAdvertiseForm } from "@/components/CompactAdvertiseForm";
 import { DemoShowcase } from "@/components/CalculatorDemo";
 import EngagementTracker from "@/components/EngagementTracker";
 
@@ -259,8 +259,8 @@ function ApplySection() {
         </Reveal>
 
         <Reveal delay={100}>
-          <div className="border border-rule border-l-[3px] border-l-brass bg-card p-8 max-[600px]:p-5">
-            <AdvertiseForm />
+          <div className="mx-auto max-w-[640px] border border-rule border-l-[3px] border-l-brass bg-card p-8 max-[600px]:p-5">
+            <CompactAdvertiseForm />
           </div>
         </Reveal>
       </div>
