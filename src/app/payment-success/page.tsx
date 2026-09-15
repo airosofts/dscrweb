@@ -8,7 +8,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function PaymentSuccessPage() {
+export default async function PaymentSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ renewal?: string }>;
+}) {
+  const { renewal } = await searchParams;
+  const isRenewal = renewal === "1";
   return (
     <div className="bg-cream">
       <Nav />
@@ -38,8 +44,9 @@ export default function PaymentSuccessPage() {
             You&apos;re all set.
           </h1>
           <p className="mx-auto max-w-[480px] text-base leading-[1.65] text-muted">
-            Your payment has been received. We&apos;ll send you an email within
-            24 hours with a link to submit your ad creative.
+            {isRenewal
+              ? "Your renewal is confirmed. Your existing creative and tracked link are already in place, so there's nothing to upload — your placement will be back live within 24 hours."
+              : "Your payment has been received. We'll send you an email within 24 hours with a link to submit your ad creative."}
           </p>
         </div>
       </section>
@@ -53,10 +60,21 @@ export default function PaymentSuccessPage() {
             </div>
 
             <div className="flex flex-col gap-6">
-              <Step num="01" title="Check your email" desc="We'll send a creative submission link within 24 hours to the email you used at checkout." />
-              <Step num="02" title="Submit your ad creative" desc="Upload your banner image (320×50) or pop-up content through the submission link." />
-              <Step num="03" title="We review & approve" desc="Creative approval takes 1–2 business days. We'll confirm via email when it's live." />
-              <Step num="04" title="Your ad goes live" desc="Your placement starts serving to investors nationwide. Track performance in your dashboard." />
+              {isRenewal ? (
+                <>
+                  <Step num="01" title="Payment confirmed" desc="A receipt is on its way to the email you used at checkout." />
+                  <Step num="02" title="Your creative carries over" desc="We re-use the ad and landing link from your previous campaign. Reply to your renewal email if you'd like to change either." />
+                  <Step num="03" title="Back live within 24 hours" desc="Your new term starts the day the previous one ends, so there's no gap in coverage." />
+                  <Step num="04" title="Recap before it ends" desc="About a week before this term wraps up, you'll get a performance recap and the option to renew again." />
+                </>
+              ) : (
+                <>
+                  <Step num="01" title="Check your email" desc="We'll send a creative submission link within 24 hours to the email you used at checkout." />
+                  <Step num="02" title="Submit your ad creative" desc="Upload your banner image (320×50) or pop-up content through the submission link." />
+                  <Step num="03" title="We review & approve" desc="Creative approval takes 1–2 business days. We'll confirm via email when it's live." />
+                  <Step num="04" title="Your ad goes live" desc="Your placement starts serving to investors nationwide. Track performance in your dashboard." />
+                </>
+              )}
             </div>
           </div>
 

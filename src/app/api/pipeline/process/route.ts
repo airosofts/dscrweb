@@ -5,9 +5,12 @@
  * (pipeline_emails):
  *   advertising_request_id set → ad-inquiry followups (lead hasn't paid)
  *   subscription_id set        → customer reminders (creative / landing URL)
+ *                                and renewal offers (campaign about to end)
  *
  * Per tick:
- *   1. Lazy-schedule reminder sequences for subscriptions that need them.
+ *   1. Lazy-schedule reminder sequences for subscriptions that need them,
+ *      queue renewal offers for placements ending within 7 days, and mark
+ *      placements past their end date as completed.
  *   2. Claim each due row (status: scheduled → processing) so two workers
  *      can't double-send.
  *   3. Evaluate stop conditions against the latest state.
@@ -18,7 +21,19 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { evaluateJourneys } from "@/lib/journey";
 import { resend, FROM_ADDRESS, PUBLIC_SITE_URL, REPLY_TO } from "@/lib/resend";
 import {
+  RENEWABLE_COLUMNS,
+  RENEWAL_DISCOUNT_PCT,
+  createRenewalOffer,
+  daysUntil,
+  getPlacementStats,
+  isRenewalPaid,
+  scheduleRenewalOffers,
+  sweepExpiredSubscriptions,
+  type RenewableSubscription,
+} from "@/lib/renewals";
+import {
   buildLeadVars,
+  buildRenewalVars,
   buildSubscriptionVars,
   evaluateCondition,
   isLeadPaid,
@@ -89,6 +104,17 @@ export async function GET() {
     console.error("[pipeline] reminder scheduling failed:", err);
   }
 
+  // ── 0b'. Renewal cycle: offers for placements ending within the lead
+  // window, and expiry bookkeeping so nothing lapses unnoticed. ──────────
+  let renewalScheduled = 0;
+  let expiredSwept = 0;
+  try {
+    expiredSwept = await sweepExpiredSubscriptions();
+    renewalScheduled = await scheduleRenewalOffers();
+  } catch (err) {
+    console.error("[pipeline] renewal scheduling failed:", err);
+  }
+
   // ── 0c. Behavior-driven journey engine: decide next emails for dynamic
   // leads from their events. Runs before the due fetch so decisions queued
   // inside the send window go out on this same tick. ─────────────────────
@@ -124,6 +150,8 @@ export async function GET() {
       skipped: 0,
       creativeScheduled,
       landingScheduled,
+      renewalScheduled,
+      expiredSwept,
       resendCancelled,
       journeyQueued,
     });
@@ -162,6 +190,8 @@ export async function GET() {
     failed,
     creativeScheduled,
     landingScheduled,
+    renewalScheduled,
+    expiredSwept,
     resendCancelled,
     journeyQueued,
   });
@@ -340,10 +370,7 @@ async function processSubscriptionRow(
 ): Promise<"sent" | "skipped" | "failed"> {
   const { data: sub } = await supabaseAdmin
     .from("ad_subscriptions")
-    .select(
-      `id, email, contact_name, company_name, status, submission_token,
-       creative_submitted_at, reminder_stopped_at, reminder_stop_reason`,
-    )
+    .select(`${RENEWABLE_COLUMNS}, submission_token, reminder_stop_reason`)
     .eq("id", pe.subscription_id!)
     .maybeSingle();
 
@@ -351,7 +378,7 @@ async function processSubscriptionRow(
     await markFailed(pe.id, "Missing subscription");
     return "failed";
   }
-  const s = sub as Subscription;
+  const s = sub as unknown as Subscription & RenewableSubscription;
 
   if (s.reminder_stopped_at) {
     await cancelRow(pe.id, `Reminders stopped: ${s.reminder_stop_reason ?? "unspecified"}`);
@@ -365,6 +392,8 @@ async function processSubscriptionRow(
     .eq("id", pe.sequence_id!)
     .maybeSingle();
   const kind = seq?.kind as string | undefined;
+
+  if (kind === "renewal_offer") return processRenewalRow(pe, s);
 
   if (kind === "creative_pending" && s.creative_submitted_at) {
     await cancelRow(pe.id, "Creative already submitted");
@@ -417,6 +446,93 @@ async function processSubscriptionRow(
     return "sent";
   } catch (err) {
     console.error(`[pipeline] subscription send failed for ${pe.id}:`, err);
+    await markFailed(pe.id, String(err));
+    return "failed";
+  }
+}
+
+/* ═══════════════════════════ Renewal offer rows ═══════════════════════════ */
+
+/**
+ * A renewal_offer step for an expiring/expired placement. Stops itself the
+ * moment the renewal is paid or the original is cancelled/refunded; otherwise
+ * renders live stats + the discounted payment link and sends.
+ */
+async function processRenewalRow(
+  pe: DueEmail,
+  s: Subscription & RenewableSubscription,
+): Promise<"sent" | "skipped" | "failed"> {
+  if (await isRenewalPaid(s.id)) {
+    await cancelRow(pe.id, "Renewal paid");
+    await cancelRemainingForSubscription(s.id, "Renewal paid");
+    return "skipped";
+  }
+  if (["cancelled", "refunded", "paused"].includes(s.status)) {
+    await cancelRow(pe.id, `Subscription is ${s.status}`);
+    await cancelRemainingForSubscription(s.id, `Subscription is ${s.status}`);
+    return "skipped";
+  }
+
+  // The payment link is created when the sequence is scheduled; recover here
+  // if that failed (e.g. Stripe was down) so the email never goes out linkless.
+  const offer = await createRenewalOffer(s);
+  if (!offer) {
+    await markFailed(pe.id, "Could not create renewal payment link");
+    return "failed";
+  }
+
+  const tpl = await loadTemplate(pe.template_id);
+  if (!tpl) {
+    await markFailed(pe.id, "Template missing or inactive");
+    return "failed";
+  }
+
+  try {
+    const stats = await getPlacementStats(s);
+    const plan = s.ad_plans ?? null;
+    const vars = buildRenewalVars({
+      pipelineEmailId: pe.id,
+      contactName: s.contact_name,
+      companyName: s.company_name,
+      email: s.email,
+      planName: plan?.name ?? s.plan_id,
+      placement: plan?.placement ?? "",
+      startsAt: s.starts_at,
+      endsAt: s.ends_at,
+      daysLeft: daysUntil(s.ends_at),
+      impressions: stats.impressions,
+      totalClicks: stats.totalClicks,
+      uniqueClicks: stats.uniqueClicks,
+      originalPriceCents: s.price_cents,
+      renewalPriceCents: offer.priceCents,
+      renewalDiscountPct: RENEWAL_DISCOUNT_PCT,
+      renewalUrl: offer.url,
+    });
+    const rendered = renderTemplate(tpl, vars, {
+      baseUrl: PUBLIC_SITE_URL,
+      pipelineEmailId: pe.id,
+    });
+
+    const result = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: pe.to_email,
+      replyTo: REPLY_TO,
+      subject: rendered.subject,
+      html: rendered.html,
+    });
+
+    await supabaseAdmin
+      .from("pipeline_emails")
+      .update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        resend_email_id: result.data?.id ?? null,
+        subject: rendered.subject,
+      })
+      .eq("id", pe.id);
+    return "sent";
+  } catch (err) {
+    console.error(`[pipeline] renewal send failed for ${pe.id}:`, err);
     await markFailed(pe.id, String(err));
     return "failed";
   }

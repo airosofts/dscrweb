@@ -74,6 +74,14 @@ check pipeline_emails trigger_reason
 echo "— 20260715_journey_stages.sql"
 check journey_rules max_sends
 
+echo "— 20260915_renewal_offers.sql"
+check ad_subscriptions renewal_seq_started_at
+check ad_subscriptions renewal_offer_url
+check ad_subscriptions renewal_price_cents
+check ad_subscriptions renewal_subscription_id
+check ad_subscriptions renews_subscription_id
+check ad_subscriptions expired_at
+
 echo
 if [[ $FAIL -eq 0 ]]; then
   echo "All $PASS checks passed — every migration is applied. ✅"

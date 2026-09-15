@@ -4,6 +4,7 @@ import { getStripe, WEBHOOK_SECRET } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { recordEvent } from "@/lib/journey";
 import { resend, FROM_ADDRESS, getNotifyEmails } from "@/lib/resend";
+import { fmtLongDate, onRenewalPaid } from "@/lib/renewals";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -58,8 +59,26 @@ export async function POST(request: NextRequest) {
       .single();
 
     const durationMonths = sub?.ad_plans?.duration_months ?? 1;
-    const startsAt = new Date();
-    const endsAt = new Date();
+
+    // Renewal? (renews_subscription_id on the row, or renewal_of in the PI
+    // metadata for links made before that column existed.) A renewal's term
+    // starts the day the previous one ends — no gap, no overlap.
+    const renewsId: string | null =
+      (sub?.renews_subscription_id as string | null | undefined) ??
+      (pi.metadata?.renewal_of || null);
+    let startsAt = new Date();
+    if (renewsId) {
+      const { data: original } = await supabaseAdmin
+        .from("ad_subscriptions")
+        .select("id, ends_at")
+        .eq("id", renewsId)
+        .maybeSingle();
+      if (original?.ends_at) {
+        const prevEnd = new Date(`${original.ends_at}T00:00:00Z`);
+        if (prevEnd > startsAt) startsAt = prevEnd;
+      }
+    }
+    const endsAt = new Date(startsAt);
     endsAt.setMonth(endsAt.getMonth() + durationMonths);
 
     // Update subscription (token was generated at checkout creation time).
@@ -76,6 +95,15 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", subId)
       .eq("status", "pending");
+
+    // Renewal paid → stop the remaining offer emails, link the rows.
+    if (renewsId) {
+      try {
+        await onRenewalPaid(subId, renewsId);
+      } catch (err) {
+        console.error("[webhook] renewal bookkeeping failed:", err);
+      }
+    }
 
     // Stop the pipeline sequence for any matched lead.
     // (a) Explicit FK link, (b) same email, (c) same phone, (d) same company.
@@ -160,8 +188,14 @@ export async function POST(request: NextRequest) {
         await resend.emails.send({
           from: FROM_ADDRESS,
           to: sub.email,
-          subject: "Payment confirmed — DSCR Calculator Pro",
-          html: buildCustomerEmail(firstName, planName, placement, price, durationMonths),
+          subject: renewsId
+            ? "Renewal confirmed — DSCR Calculator Pro"
+            : "Payment confirmed — DSCR Calculator Pro",
+          html: buildCustomerEmail(firstName, planName, placement, price, durationMonths, {
+            renewal: !!renewsId,
+            startsAt: startsAt.toISOString().slice(0, 10),
+            endsAt: endsAt.toISOString().slice(0, 10),
+          }),
         });
       } catch (err) {
         console.error("[webhook] customer email failed:", err);
@@ -174,8 +208,8 @@ export async function POST(request: NextRequest) {
         from: FROM_ADDRESS,
         to: await getNotifyEmails(),
         replyTo: sub?.email,
-        subject: `New ad payment — ${sub?.ad_plans?.name ?? "Unknown"} · $${(pi.amount / 100).toFixed(0)}`,
-        html: buildAdminEmail(sub, pi),
+        subject: `${renewsId ? "Ad RENEWAL paid" : "New ad payment"} — ${sub?.ad_plans?.name ?? "Unknown"} · $${(pi.amount / 100).toFixed(0)}`,
+        html: buildAdminEmail(sub, pi, renewsId),
       });
     } catch (err) {
       console.error("[webhook] admin email failed:", err);
@@ -187,7 +221,15 @@ export async function POST(request: NextRequest) {
 
 /* ─── Email builders ─── */
 
-function buildCustomerEmail(firstName: string, planName: string, placement: string, price: string, months: number) {
+function buildCustomerEmail(
+  firstName: string,
+  planName: string,
+  placement: string,
+  price: string,
+  months: number,
+  term: { renewal: boolean; startsAt: string; endsAt: string },
+) {
+  if (term.renewal) return buildRenewalCustomerEmail(firstName, planName, placement, price, months, term);
   return `<!doctype html>
 <html><head><meta charset="utf-8"/></head>
 <body style="margin:0;padding:0;background:#F5F2ED;font-family:'DM Sans',Helvetica,Arial,sans-serif;color:#0A1628;">
@@ -230,7 +272,59 @@ function buildCustomerEmail(firstName: string, planName: string, placement: stri
 </body></html>`;
 }
 
-function buildAdminEmail(sub: Record<string, unknown> & { ad_plans?: Record<string, unknown> } | null, pi: Stripe.PaymentIntent) {
+function buildRenewalCustomerEmail(
+  firstName: string,
+  planName: string,
+  placement: string,
+  price: string,
+  months: number,
+  term: { startsAt: string; endsAt: string },
+) {
+  return `<!doctype html>
+<html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#F5F2ED;font-family:'DM Sans',Helvetica,Arial,sans-serif;color:#0A1628;">
+<table role="presentation" width="100%" style="background:#F5F2ED;padding:40px 16px;">
+<tr><td align="center">
+<table role="presentation" width="560" style="max-width:560px;background:#FFF;border:1px solid #E8E4DD;">
+<tr><td style="height:3px;background:#9B7B4E;"></td></tr>
+<tr><td style="padding:32px;">
+<div style="font-family:monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#9B7B4E;margin-bottom:18px;">Renewal Confirmed</div>
+<h1 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#0A1628;">Thanks, ${firstName}. You're renewed.</h1>
+<p style="font-size:15px;line-height:1.7;color:#5A6978;margin:0 0 24px;">
+  Your payment of <strong style="color:#0A1628;">${price}</strong> for another
+  ${months} month${months > 1 ? "s" : ""} of the <strong style="color:#0A1628;">${planName}</strong> placement has been received.
+</p>
+<table role="presentation" width="100%" style="background:#FAF8F4;border:1px solid #E8E4DD;border-left:3px solid #9B7B4E;">
+<tr><td style="padding:20px;">
+<div style="margin-bottom:14px;">
+  <div style="font-family:monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#9B7B4E;margin-bottom:4px;">Your creative carries over</div>
+  <div style="font-size:13px;color:#5A6978;margin-top:2px;">We re-use the ad and landing link from your previous campaign. Reply if you'd like to change either.</div>
+</div>
+<div style="margin-bottom:14px;">
+  <div style="font-family:monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#9B7B4E;margin-bottom:4px;">New term</div>
+  <div style="font-size:14px;color:#0A1628;font-weight:600;">${fmtLongDate(term.startsAt)} – ${fmtLongDate(term.endsAt)}</div>
+  <div style="font-size:13px;color:#5A6978;margin-top:2px;">${placement} · back live within 24 hours, no gap in coverage.</div>
+</div>
+<div>
+  <div style="font-family:monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#9B7B4E;margin-bottom:4px;">Before it ends</div>
+  <div style="font-size:13px;color:#5A6978;margin-top:2px;">About a week before this term wraps up you'll get a performance recap and the option to renew again.</div>
+</div>
+</td></tr></table>
+<p style="margin:24px 0 0;font-size:13px;color:#A09888;">Questions? Reply to this email.</p>
+</td></tr>
+<tr><td style="padding:20px 32px;border-top:1px solid #E8E4DD;background:#FAF8F4;">
+<div style="font-family:monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#9B7B4E;">dscrcalculator.pro</div>
+</td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+function buildAdminEmail(
+  sub: Record<string, unknown> & { ad_plans?: Record<string, unknown> } | null,
+  pi: Stripe.PaymentIntent,
+  renewsId: string | null = null,
+) {
   const planName = (sub?.ad_plans?.name as string) ?? "Unknown";
   const email = (sub?.email as string) ?? "—";
   const amount = `$${(pi.amount / 100).toFixed(0)}`;
@@ -253,9 +347,15 @@ function buildAdminEmail(sub: Record<string, unknown> & { ad_plans?: Record<stri
 <strong style="color:#0A1628;">Plan:</strong> ${planName}<br/>
 <strong style="color:#0A1628;">Geo:</strong> ${geo}<br/>
 <strong style="color:#0A1628;">Amount:</strong> ${amount}<br/>
-<strong style="color:#0A1628;">Stripe:</strong> <code style="font-family:monospace;font-size:11px;">${pi.id}</code>
+<strong style="color:#0A1628;">Stripe:</strong> <code style="font-family:monospace;font-size:11px;">${pi.id}</code>${
+    renewsId ? `<br/><strong style="color:#0A1628;">Renewal of:</strong> <code style="font-family:monospace;font-size:11px;">${renewsId}</code>` : ""
+  }
 </td></tr></table>
-<p style="margin:20px 0 0;font-size:13px;color:#A09888;">Send creative submission link within 24 hours.</p>
+<p style="margin:20px 0 0;font-size:13px;color:#A09888;">${
+    renewsId
+      ? "RENEWAL — creative carries over. Re-activate the placement in the admin portal (Subscriptions → Activate); no creative link needed."
+      : "Send creative submission link within 24 hours."
+  }</p>
 </td></tr>
 </table>
 </td></tr></table>

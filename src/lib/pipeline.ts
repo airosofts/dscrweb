@@ -21,6 +21,19 @@ export const ALLOWED_VARIABLES = [
   "submitCreativeUrl",
   "targetStates",
   "year",
+  // Renewal offers (see @/lib/renewals)
+  "planName",
+  "placement",
+  "startsAt",
+  "endsAt",
+  "daysLeft",
+  "impressions",
+  "totalClicks",
+  "uniqueClicks",
+  "originalPrice",
+  "renewalPrice",
+  "renewalDiscount",
+  "renewalUrl",
 ] as const;
 
 export type TemplateVar = (typeof ALLOWED_VARIABLES)[number];
@@ -30,6 +43,7 @@ const URL_VARS: ReadonlySet<TemplateVar> = new Set([
   "pricingUrl",
   "unsubscribeUrl",
   "submitCreativeUrl",
+  "renewalUrl",
 ]);
 
 /* ─── HTML escape ───────────────────────────────────────────────────────── */
@@ -136,6 +150,65 @@ export function buildSubscriptionVars(input: SubscriptionVarsInput): TemplateVar
     unsubscribeUrl: "",
     submitCreativeUrl: wrapClick(baseUrl, input.pipelineEmailId, submitUrl),
     year: String(new Date().getFullYear()),
+  };
+}
+
+/**
+ * Variable block for a renewal offer (kind 'renewal_offer'). Stats and the
+ * payment link are computed by @/lib/renewals; this just formats them.
+ * The CTA is click-wrapped so the Pipeline page shows who clicked.
+ */
+export type RenewalVarsInput = {
+  pipelineEmailId: string;
+  contactName: string | null;
+  companyName: string | null;
+  email: string;
+  planName: string;
+  placement: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  daysLeft: number | null;
+  impressions: number;
+  totalClicks: number;
+  uniqueClicks: number;
+  originalPriceCents: number;
+  renewalPriceCents: number;
+  renewalDiscountPct: number;
+  renewalUrl: string;
+};
+
+export function buildRenewalVars(input: RenewalVarsInput): TemplateVars {
+  const baseUrl = PUBLIC_SITE_URL;
+  const firstName =
+    (input.contactName || input.email || "").trim().split(/\s+/)[0] || "there";
+  const usd = (c: number) => "$" + Math.round(c / 100).toLocaleString("en-US");
+  const longDate = (d: string | null) => {
+    if (!d) return "";
+    const date = new Date(d.length === 10 ? `${d}T12:00:00Z` : d);
+    return Number.isNaN(date.getTime())
+      ? ""
+      : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  };
+  return {
+    firstName,
+    companyName: input.companyName ?? "",
+    email: input.email ?? "",
+    pricingUrl: "",
+    unsubscribeUrl: "",
+    submitCreativeUrl: "",
+    year: String(new Date().getFullYear()),
+    planName: input.planName,
+    placement: input.placement,
+    startsAt: longDate(input.startsAt),
+    endsAt: longDate(input.endsAt),
+    daysLeft: input.daysLeft == null ? "" : String(Math.max(0, input.daysLeft)),
+    impressions: input.impressions.toLocaleString("en-US"),
+    totalClicks: input.totalClicks.toLocaleString("en-US"),
+    uniqueClicks: input.uniqueClicks.toLocaleString("en-US"),
+    originalPrice: usd(input.originalPriceCents),
+    renewalPrice: usd(input.renewalPriceCents),
+    renewalDiscount: `${input.renewalDiscountPct}%`,
+    renewalUrl: wrapClick(baseUrl, input.pipelineEmailId, input.renewalUrl),
   };
 }
 
@@ -493,7 +566,7 @@ async function scheduleFirstStepViaResend(
 
 /* ─── Schedule a reminder chain for a paid subscription ─────────────────── */
 
-export type SubscriptionSequenceKind = "creative_pending" | "landing_missing";
+export type SubscriptionSequenceKind = "creative_pending" | "landing_missing" | "renewal_offer";
 
 /**
  * Insert one pipeline_emails row per active step of the default sequence for
@@ -557,7 +630,9 @@ export async function scheduleSubscriptionSequence(
   const stamp =
     kind === "creative_pending"
       ? { creative_seq_started_at: nowISO }
-      : { landing_seq_started_at: nowISO };
+      : kind === "landing_missing"
+        ? { landing_seq_started_at: nowISO }
+        : { renewal_seq_started_at: nowISO };
   await supabaseAdmin.from("ad_subscriptions").update(stamp).eq("id", sub.id);
 
   return { scheduled: rows.length, sequenceId };
