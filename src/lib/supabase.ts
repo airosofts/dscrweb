@@ -10,10 +10,21 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  */
 let client: SupabaseClient | null = null;
 
+/**
+ * Read an env var at RUNTIME. Next inlines any literal
+ * `process.env.NEXT_PUBLIC_*` reference into the bundle at build time, so if
+ * the build machine lacks the var it is baked in as empty and the runtime
+ * value is never consulted. A computed key defeats the inlining.
+ */
+function readEnv(name: string): string | undefined {
+  const v = (process.env as Record<string, string | undefined>)[name];
+  return v && v.trim() ? v : undefined;
+}
+
 function getClient(): SupabaseClient {
   if (client) return client;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = readEnv("SUPABASE_URL") ?? readEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = readEnv("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) {
     throw new Error(
       "[landing-site] Supabase env vars missing (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).",
