@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer";
 import { PricingClient } from "@/components/PricingClient";
 
 export const metadata: Metadata = {
-  title: "Pricing — Advertise on DSCR Calculator Pro",
+  title: { absolute: "Pricing — Advertise on DSCR Calculator Pro" },
   description:
     "Choose your ad placement and geo targeting. Instant checkout via Stripe — no contracts.",
   robots: { index: false, follow: false },

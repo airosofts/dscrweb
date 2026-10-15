@@ -8,7 +8,8 @@ import { DemoShowcase } from "@/components/CalculatorDemo";
 import EngagementTracker from "@/components/EngagementTracker";
 
 export const metadata: Metadata = {
-  title: "Advertise on DSCR Calculator Pro — Reach Real Estate Investors",
+  title: { absolute: "Advertise on DSCR Calculator Pro — Reach Real Estate Investors" },
+  alternates: { canonical: "/advertise" },
   description:
     "Place your brand in front of active real estate investors. Premium in-app ad placements with nationwide reach on DSCR Calculator Pro.",
 };

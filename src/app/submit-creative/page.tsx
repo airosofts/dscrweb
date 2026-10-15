@@ -5,7 +5,8 @@ import { Footer } from "@/components/Footer";
 import { CreativeSubmitClient } from "@/components/CreativeSubmitClient";
 
 export const metadata: Metadata = {
-  title: "Submit Ad Creative — DSCR Calculator Pro",
+  title: { absolute: "Submit Ad Creative — DSCR Calculator Pro" },
+  robots: { index: false, follow: false },
   description: "Upload your ad creative for review.",
 };
 

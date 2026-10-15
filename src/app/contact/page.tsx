@@ -4,7 +4,8 @@ import { Footer } from "@/components/Footer";
 import { ContactForm } from "@/components/ContactForm";
 
 export const metadata: Metadata = {
-  title: "Contact — DSCR Calculator Pro",
+  title: { absolute: "Contact — DSCR Calculator Pro" },
+  alternates: { canonical: "/contact" },
   description:
     "Get in touch with the DSCR Calculator Pro team. Support, advertising, press, and partnership inquiries.",
 };

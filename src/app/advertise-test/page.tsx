@@ -23,7 +23,7 @@ import EngagementTracker from "@/components/EngagementTracker";
  */
 
 export const metadata: Metadata = {
-  title: "TEST — Advertise on DSCR Calculator Pro",
+  title: { absolute: "TEST — Advertise on DSCR Calculator Pro" },
   description: "Test variant of the advertise page.",
   robots: { index: false, follow: false },
 };

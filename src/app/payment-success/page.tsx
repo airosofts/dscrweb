@@ -4,7 +4,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Payment Confirmed — DSCR Calculator Pro",
+  title: { absolute: "Payment Confirmed — DSCR Calculator Pro" },
   robots: { index: false, follow: false },
 };
 

@@ -4,7 +4,8 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — DSCR Calculator Pro",
+  title: { absolute: "Privacy Policy — DSCR Calculator Pro" },
+  alternates: { canonical: "/privacy" },
   description:
     "How DSCR Calculator Pro handles data. We don't require accounts, and calculations stay on your device.",
 };

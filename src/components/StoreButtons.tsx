@@ -2,7 +2,7 @@ export function StoreButtons() {
   return (
     <div className="mb-3.5 flex flex-wrap gap-3 max-[480px]:flex-col max-[480px]:items-center max-[900px]:justify-center">
       <a
-        href="https://apps.apple.com/app/dscr-calculator-pro/id0000000000"
+        href="https://apps.apple.com/us/app/dscr-calculator-pro/id6759057051"
         className="inline-flex items-center gap-2.5 rounded-[10px] bg-cream px-6 py-3 text-ink transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.25)] max-[480px]:w-full max-[480px]:max-w-[240px] max-[480px]:justify-center"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="h-[22px] w-[22px] shrink-0">

@@ -131,3 +131,76 @@ body::before {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Guide & calculator page typography (light "paper" body on cream)
+   ───────────────────────────────────────────────────────────────────────── */
+.prose-dscr {
+  color: var(--color-slate);
+  font-size: 16px;
+  line-height: 1.75;
+  max-width: 720px;
+}
+.prose-dscr > * + * { margin-top: 1em; }
+.prose-dscr h2 {
+  margin-top: 2.4em;
+  color: var(--color-ink);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  scroll-margin-top: 110px;
+}
+.prose-dscr h2:first-child { margin-top: 0; }
+.prose-dscr h3 {
+  margin-top: 1.8em;
+  color: var(--color-ink);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.3;
+  scroll-margin-top: 110px;
+}
+.prose-dscr strong { color: var(--color-ink); font-weight: 700; }
+.prose-dscr a { color: #7a5f37; text-decoration: underline; text-decoration-color: rgba(155,123,78,0.45); text-underline-offset: 3px; }
+.prose-dscr a:hover { text-decoration-color: var(--color-brass); }
+.prose-dscr ul, .prose-dscr ol { padding-left: 1.3em; }
+.prose-dscr ul { list-style: disc; }
+.prose-dscr ol { list-style: decimal; }
+.prose-dscr li + li { margin-top: 0.4em; }
+.prose-dscr li::marker { color: var(--color-brass); }
+.prose-dscr .table-wrap { overflow-x: auto; border: 1px solid var(--color-rule); background: var(--color-card); }
+.prose-dscr table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.prose-dscr th { background: var(--color-card-alt); color: var(--color-ink); font-weight: 700; text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--color-rule); white-space: nowrap; }
+.prose-dscr td { padding: 10px 14px; border-bottom: 1px solid var(--color-rule); color: var(--color-ink); vertical-align: top; }
+.prose-dscr tr:last-child td { border-bottom: 0; }
+.prose-dscr td.num, .prose-dscr th.num { text-align: right; }
+.prose-dscr .formula {
+  border: 1px solid var(--color-rule);
+  border-left: 3px solid var(--color-brass);
+  background: var(--color-card);
+  padding: 18px 22px;
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.prose-dscr .answer {
+  border-left: 3px solid var(--color-brass);
+  padding: 4px 0 4px 18px;
+  color: var(--color-ink);
+  font-size: 17px;
+  line-height: 1.7;
+}
+.prose-dscr .callout {
+  border: 1px solid var(--color-rule);
+  background: var(--color-card-alt);
+  padding: 16px 20px;
+  font-size: 15px;
+}
+
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  body::before, nav, footer, .no-print, .site-chrome { display: none !important; }
+  #calculator { break-inside: avoid; }
+}

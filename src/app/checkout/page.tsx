@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { CheckoutClient } from "@/components/CheckoutClient";
 
 export const metadata: Metadata = {
-  title: "Checkout — DSCR Calculator Pro",
+  title: { absolute: "Checkout — DSCR Calculator Pro" },
   robots: { index: false, follow: false },
 };
 

@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { LogoMark } from "./LogoMark";
+import { APP_STORE_URL } from "@/lib/site";
 
 const LINKS = [
-  { href: "/advertise", label: "Advertise" },
-  { href: "/privacy", label: "Privacy" },
-  { href: "/contact", label: "Contact" },
+  { href: "/", label: "Calculator" },
+  { href: "/dscr-formula", label: "DSCR Formula" },
+  { href: "/dscr-loan-requirements", label: "Loan Requirements" },
+  { href: "/guides", label: "Guides" },
 ];
 
 export function Nav() {
@@ -66,7 +68,7 @@ export function Nav() {
               </Link>
             ))}
             <a
-              href="#download"
+              href={APP_STORE_URL}
               className="ml-2 bg-cream px-4 py-2 text-[12px] font-bold tracking-[-0.01em] text-ink transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_6px_16px_rgba(250,248,244,0.2)]"
             >
               Get App →
@@ -136,7 +138,7 @@ export function Nav() {
           {/* CTA */}
           <div className="px-6 pt-6">
             <a
-              href="#download"
+              href={APP_STORE_URL}
               onClick={() => setOpen(false)}
               className="flex items-center justify-center gap-2 bg-cream px-6 py-4 text-[13px] font-extrabold uppercase tracking-[0.14em] text-ink transition-colors hover:bg-white"
             >
