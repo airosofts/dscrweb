@@ -193,8 +193,8 @@ export default function Home() {
         </li>
       </ul>
       <p>
-        On the example property, the lender method gives <strong>1.20</strong>. The NOI method, after 5% vacancy and an
-        8% management fee, gives <strong>1.06</strong>. Both are correct; they answer different questions. The lender
+        On the example property, the lender method gives <strong>1.20</strong>. The NOI method, after the 8% management
+        fee, gives <strong>1.13</strong>, and adding 5% vacancy drops it to <strong>1.06</strong>. Both are correct; they answer different questions. The lender
         number tells you whether you&apos;ll qualify. The NOI number is closer to how much margin you really have.
       </p>
 

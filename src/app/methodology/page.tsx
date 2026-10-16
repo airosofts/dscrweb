@@ -60,8 +60,8 @@ export default function Page() {
       </p>
       <p>
         The lender method reflects how most residential DSCR lenders size 1–4 unit loans: gross rent, with vacancy and
-        management ignored. The NOI method is the commercial definition. The iPhone app&apos;s DSCR subtracts the
-        management fee from rent before dividing by PITIA, which sits between the two.
+        management ignored. The NOI method is the commercial definition. The iPhone app uses the lender method from
+        version 1.0.4; earlier versions subtracted the management fee from rent first, which produced a lower figure.
       </p>
 
       <h2 id="reverse">Maximum loan and minimum rent</h2>
@@ -87,9 +87,15 @@ export default function Page() {
         Cash-on-cash = Annual cash flow ÷ (down payment + closing costs + repairs)
       </p>
       <p>
+        On the main DSCR calculator, cash flow = rent × (1 − vacancy) × (1 − management) − PITIA, matching the iPhone app
+        (which has no vacancy input). Closing costs = origination (a dollar amount or a percentage of the loan) + loan
+        fees + title + escrow + prepaid interest + prepaid insurance + payment reserve. Cash invested = down payment +
+        closing costs. Liquidity to verify = cash invested + payment reserve. For a refinance, net proceeds = new loan −
+        current balance − closing costs.
+      </p>
+      <p>
         On the cash flow, cap rate and cash-on-cash calculators, operating expenses also include maintenance and CapEx
-        reserves (as a percentage of rent) and owner-paid utilities. The main DSCR calculator&apos;s cash flow excludes
-        those reserves.
+        reserves (as a percentage of rent) and owner-paid utilities.
       </p>
 
       <h2 id="bands">Result bands</h2>

@@ -12,8 +12,11 @@ import {
   solveForTarget,
   type DscrInputs,
   type DscrMethod,
+  type FeeType,
+  type LoanPurpose,
   type LoanType,
 } from "@/lib/dscr";
+import { APP_STORE_URL } from "@/lib/site";
 import { Field, NumberField, Segmented } from "./fields";
 
 /** URL keys for shareable results — short so links stay readable. */
@@ -30,6 +33,23 @@ const PARAMS: Record<keyof DscrInputs, string> = {
   interestRate: "rate",
   termYears: "term",
   loanType: "type",
+  purpose: "purpose",
+  currentLoanBalance: "bal",
+  originationFee: "orig",
+  originationFeeType: "origtype",
+  loanFees: "lfees",
+  titleFees: "title",
+  escrow: "escrow",
+  prepaidInterest: "ppint",
+  prepaidInsurance: "ppins",
+  paymentReserve: "reserve",
+};
+/** Non-numeric inputs and how they serialize. */
+const ENUMS: Partial<Record<keyof DscrInputs, [string, string, string, string]>> = {
+  // key: [short A, value A, short B, value B]
+  loanType: ["am", "amortizing", "io", "interestOnly"],
+  purpose: ["buy", "purchase", "refi", "refinance"],
+  originationFeeType: ["usd", "fixed", "pct", "percent"],
 };
 
 const TERMS = [15, 20, 25, 30, 40];
@@ -45,6 +65,7 @@ export function DscrCalculator({ initialMode = "dscr" }: { initialMode?: "dscr" 
   const [method, setMethod] = useState<DscrMethod>("lender");
   const [target, setTarget] = useState(1.25);
   const [copied, setCopied] = useState(false);
+  const [feesOpen, setFeesOpen] = useState(false);
 
   // Hydrate from a shared link (client only, so the server HTML always shows defaults).
   useEffect(() => {
@@ -55,8 +76,9 @@ export function DscrCalculator({ initialMode = "dscr" }: { initialMode?: "dscr" 
       for (const [key, param] of Object.entries(PARAMS) as [keyof DscrInputs, string][]) {
         const raw = q.get(param);
         if (raw == null) continue;
-        if (key === "loanType") {
-          next.loanType = raw === "io" ? "interestOnly" : "amortizing";
+        const e = ENUMS[key];
+        if (e) {
+          (next[key] as string) = raw === e[2] ? e[3] : e[1];
         } else {
           const v = Number(raw);
           if (Number.isFinite(v)) (next[key] as number) = v;
@@ -72,6 +94,7 @@ export function DscrCalculator({ initialMode = "dscr" }: { initialMode?: "dscr" 
   const set = <K extends keyof DscrInputs>(k: K, v: DscrInputs[K]) => setInp((p) => ({ ...p, [k]: v }));
 
   const r = useMemo(() => calculate(inp), [inp]);
+  const isRefi = inp.purpose === "refinance";
   const dscr = dscrOf(r, method);
   const band = bandOf(dscr);
   const style = BAND_STYLE[band.key];
@@ -98,7 +121,8 @@ export function DscrCalculator({ initialMode = "dscr" }: { initialMode?: "dscr" 
     const q = new URLSearchParams();
     for (const [key, param] of Object.entries(PARAMS) as [keyof DscrInputs, string][]) {
       const v = inp[key];
-      q.set(param, key === "loanType" ? (v === "interestOnly" ? "io" : "am") : String(v));
+      const e = ENUMS[key];
+      q.set(param, e ? (v === e[3] ? e[2] : e[0]) : String(v));
     }
     if (method === "noi") q.set("method", "noi");
     if (target !== 1.25) q.set("target", String(target));
@@ -136,8 +160,26 @@ export function DscrCalculator({ initialMode = "dscr" }: { initialMode?: "dscr" 
           </Group>
 
           <Group title="Loan">
-            <NumberField id="price" label="Purchase price or value" prefix="$" value={inp.purchasePrice} onChange={(v) => set("purchasePrice", v)} step={5000} />
-            <NumberField id="down" label="Down payment" suffix="%" value={inp.downPaymentPct} onChange={(v) => set("downPaymentPct", v)} step={1} hint={`Loan amount ${fmtUsd(r.loanAmount)} · ${fmtPct(r.ltvPct, 0)} LTV`} />
+            <Field id="purpose" label="Loan purpose" wide>
+              <Segmented<LoanPurpose>
+                id="purpose"
+                value={inp.purpose}
+                onChange={(v) => set("purpose", v)}
+                options={[
+                  { value: "purchase", label: "Purchase" },
+                  { value: "refinance", label: "Refinance" },
+                ]}
+              />
+            </Field>
+            <NumberField id="price" label={isRefi ? "Property value" : "Purchase price"} prefix="$" value={inp.purchasePrice} onChange={(v) => set("purchasePrice", v)} step={5000} />
+            {isRefi ? (
+              <NumberField id="ltv" label="Loan-to-value" suffix="%" value={+(100 - inp.downPaymentPct).toFixed(2)} onChange={(v) => set("downPaymentPct", 100 - v)} step={1} hint={`New loan ${fmtUsd(r.loanAmount)}`} />
+            ) : (
+              <NumberField id="down" label="Down payment" suffix="%" value={inp.downPaymentPct} onChange={(v) => set("downPaymentPct", v)} step={1} hint={`Loan amount ${fmtUsd(r.loanAmount)} · ${fmtPct(r.ltvPct, 0)} LTV`} />
+            )}
+            {isRefi && (
+              <NumberField id="bal" label="Current loan balance" prefix="$" value={inp.currentLoanBalance} onChange={(v) => set("currentLoanBalance", v)} step={1000} hint="Paid off at closing" />
+            )}
             <NumberField id="rate" label="Interest rate" suffix="%" value={inp.interestRate} onChange={(v) => set("interestRate", v)} step={0.125} />
             <Field id="term" label="Term">
               <select
@@ -165,6 +207,42 @@ export function DscrCalculator({ initialMode = "dscr" }: { initialMode?: "dscr" 
               />
             </Field>
           </Group>
+
+          <details className="group border-t border-rule pt-4" open={feesOpen} onToggle={(e) => setFeesOpen((e.target as HTMLDetailsElement).open)}>
+            <summary className="flex cursor-pointer list-none items-center justify-between font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-brass">
+              <span>Closing costs · {fmtUsd(r.totalFees)}</span>
+              <span aria-hidden className="text-[14px] transition-transform group-open:rotate-45">+</span>
+            </summary>
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 max-[480px]:grid-cols-1">
+              <NumberField
+                id="orig"
+                label="Origination fee"
+                prefix={inp.originationFeeType === "fixed" ? "$" : undefined}
+                suffix={inp.originationFeeType === "percent" ? "% of loan" : undefined}
+                value={inp.originationFee}
+                onChange={(v) => set("originationFee", v)}
+                step={inp.originationFeeType === "percent" ? 0.25 : 100}
+                hint={inp.originationFeeType === "percent" ? `= ${fmtUsd(r.originationFeeAmount)}` : undefined}
+              />
+              <Field id="origtype" label="Origination fee as">
+                <Segmented<FeeType>
+                  id="origtype"
+                  value={inp.originationFeeType}
+                  onChange={(v) => set("originationFeeType", v)}
+                  options={[
+                    { value: "fixed", label: "$ amount" },
+                    { value: "percent", label: "% of loan" },
+                  ]}
+                />
+              </Field>
+              <NumberField id="lfees" label="Loan fees" prefix="$" value={inp.loanFees} onChange={(v) => set("loanFees", v)} step={100} hint="Underwriting, processing, appraisal" />
+              <NumberField id="title" label="Title fees" prefix="$" value={inp.titleFees} onChange={(v) => set("titleFees", v)} step={100} />
+              <NumberField id="escrow" label="Escrow" prefix="$" value={inp.escrow} onChange={(v) => set("escrow", v)} step={100} hint="Initial tax/insurance deposit" />
+              <NumberField id="ppint" label="Prepaid interest" prefix="$" value={inp.prepaidInterest} onChange={(v) => set("prepaidInterest", v)} step={50} />
+              <NumberField id="ppins" label="Prepaid insurance" prefix="$" value={inp.prepaidInsurance} onChange={(v) => set("prepaidInsurance", v)} step={50} />
+              <NumberField id="reserve" label="Payment reserve" prefix="$" value={inp.paymentReserve} onChange={(v) => set("paymentReserve", v)} step={100} hint="Reserves the lender holds or requires" />
+            </div>
+          </details>
         </div>
 
         {/* ─────────────── Result ─────────────── */}
@@ -228,6 +306,42 @@ export function DscrCalculator({ initialMode = "dscr" }: { initialMode?: "dscr" 
               <Stat label="Cash-on-cash" value={fmtPct(r.cashOnCashPct)} />
             </div>
           </div>
+
+          <div className="border border-rule bg-card p-5">
+            <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-brass">
+              {isRefi ? "Refinance proceeds" : "Cash to close"}
+            </div>
+            <Rows
+              rows={
+                isRefi
+                  ? [
+                      ["New loan", fmtUsd(r.loanAmount)],
+                      ["Pay off current loan", `−${fmtUsd(inp.currentLoanBalance)}`],
+                      ["Closing costs", `−${fmtUsd(r.totalFees)}`],
+                    ]
+                  : [
+                      [`Down payment (${fmtPct(r.downPaymentPct, 0)})`, fmtUsd(r.downPayment)],
+                      ["Closing costs", fmtUsd(r.totalFees)],
+                    ]
+              }
+              total={isRefi ? [r.netProceeds >= 0 ? "Cash out to you" : "Cash due at closing", fmtUsd(Math.abs(r.netProceeds))] : ["Cash invested", fmtUsd(r.cashInvested)]}
+            />
+            <div className="mt-3 flex justify-between gap-3 text-[13px]">
+              <span className="text-slate">Liquidity to verify</span>
+              <span className="font-semibold tabular-nums text-ink">{fmtUsd(r.liquidityToVerify)}</span>
+            </div>
+          </div>
+
+          <a
+            href={APP_STORE_URL}
+            className="no-print flex items-center justify-between gap-3 bg-ink px-5 py-4 text-cream transition-colors hover:bg-ink-mid"
+          >
+            <span>
+              <span className="block text-[14px] font-bold">Run deals on your phone with the free app</span>
+              <span className="block text-[12px] text-muted">Same math, plus a lender-ready PDF you can share in a tap.</span>
+            </span>
+            <span aria-hidden className="text-brass-pale">→</span>
+          </a>
 
           <div className="no-print flex gap-2">
             <button type="button" onClick={copyLink} className="btn-brass flex-1 !px-4">

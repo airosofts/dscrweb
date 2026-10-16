@@ -9,12 +9,14 @@
  *   noi     — annual net operating income ÷ annual principal + interest.
  *             The classic commercial-real-estate definition.
  *
- * The app's own DSCR subtracts the property-management fee from rent before
- * dividing by PITIA; `appDscr` reproduces that for the methodology page.
+ * The iOS app (1.0.4+) uses the same lender method. Closing costs, refinance
+ * net proceeds, cash invested and liquidity mirror the app's model exactly.
  */
 
 export type LoanType = "amortizing" | "interestOnly";
 export type DscrMethod = "lender" | "noi";
+export type LoanPurpose = "purchase" | "refinance";
+export type FeeType = "fixed" | "percent";
 
 export type DscrInputs = {
   monthlyRent: number;
@@ -29,11 +31,22 @@ export type DscrInputs = {
   interestRate: number; // annual %, e.g. 7.5
   termYears: number;
   loanType: LoanType;
+  purpose: LoanPurpose;
+  currentLoanBalance: number; // refinance only
+  originationFee: number;
+  originationFeeType: FeeType;
+  loanFees: number;
+  titleFees: number;
+  escrow: number;
+  prepaidInterest: number;
+  prepaidInsurance: number;
+  paymentReserve: number;
 };
 
+/** Same defaults as the app's "reset" (vacancy and flood are web-only extras). */
 export const DEFAULT_INPUTS: DscrInputs = {
   monthlyRent: 2500,
-  vacancyPct: 5,
+  vacancyPct: 0,
   managementPct: 8,
   annualTaxes: 3600,
   annualInsurance: 1200,
@@ -44,6 +57,16 @@ export const DEFAULT_INPUTS: DscrInputs = {
   interestRate: 7.5,
   termYears: 30,
   loanType: "amortizing",
+  purpose: "purchase",
+  currentLoanBalance: 0,
+  originationFee: 1500,
+  originationFeeType: "fixed",
+  loanFees: 1995,
+  titleFees: 2400,
+  escrow: 0,
+  prepaidInterest: 0,
+  prepaidInsurance: 0,
+  paymentReserve: 0,
 };
 
 const n = (v: number) => (Number.isFinite(v) ? v : 0);
@@ -93,12 +116,17 @@ export type DscrResult = {
   annualDebtService: number;
   lenderDscr: number;
   noiDscr: number;
-  appDscr: number;
   monthlyCashFlow: number;
   annualCashFlow: number;
   capRatePct: number;
   cashOnCashPct: number;
   downPayment: number;
+  downPaymentPct: number;
+  originationFeeAmount: number;
+  totalFees: number;
+  netProceeds: number; // refi: loan − payoff − fees; purchase: loan − fees
+  cashInvested: number; // down payment + all closing costs
+  liquidityToVerify: number; // cash invested + payment reserve (app definition)
 };
 
 export function calculate(i: DscrInputs): DscrResult {
@@ -115,7 +143,14 @@ export function calculate(i: DscrInputs): DscrResult {
   const annualNoi = (effectiveRent - managementFee - tia) * 12;
   const annualDebtService = pi * 12;
   const monthlyCashFlow = effectiveRent - managementFee - pitia;
-  const downPayment = n(i.purchasePrice) - loanAmount;
+  const isPurchase = i.purpose !== "refinance";
+  const downPayment = isPurchase ? n(i.purchasePrice) - loanAmount : 0;
+  const originationFeeAmount =
+    i.originationFeeType === "percent" ? (loanAmount * n(i.originationFee)) / 100 : n(i.originationFee);
+  const totalFees =
+    originationFeeAmount + n(i.loanFees) + n(i.titleFees) + n(i.escrow) +
+    n(i.prepaidInterest) + n(i.prepaidInsurance) + n(i.paymentReserve);
+  const cashInvested = downPayment + totalFees;
   return {
     loanAmount,
     ltvPct: i.purchasePrice > 0 ? (loanAmount / i.purchasePrice) * 100 : 0,
@@ -131,12 +166,17 @@ export function calculate(i: DscrInputs): DscrResult {
     annualDebtService,
     lenderDscr: pitia > 0 ? rent / pitia : 0,
     noiDscr: annualDebtService > 0 ? annualNoi / annualDebtService : 0,
-    appDscr: pitia > 0 ? (rent * (1 - n(i.managementPct) / 100)) / pitia : 0,
     monthlyCashFlow,
     annualCashFlow: monthlyCashFlow * 12,
     capRatePct: i.purchasePrice > 0 ? (annualNoi / i.purchasePrice) * 100 : 0,
-    cashOnCashPct: downPayment > 0 ? ((monthlyCashFlow * 12) / downPayment) * 100 : 0,
+    cashOnCashPct: cashInvested > 0 ? ((monthlyCashFlow * 12) / cashInvested) * 100 : 0,
     downPayment,
+    downPaymentPct: isPurchase && i.purchasePrice > 0 ? (downPayment / i.purchasePrice) * 100 : 0,
+    originationFeeAmount,
+    totalFees,
+    netProceeds: isPurchase ? loanAmount - totalFees : loanAmount - n(i.currentLoanBalance) - totalFees,
+    cashInvested,
+    liquidityToVerify: cashInvested + n(i.paymentReserve),
   };
 }
 

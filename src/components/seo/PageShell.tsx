@@ -244,8 +244,8 @@ export function AppCard() {
     <aside className="mt-10 flex flex-wrap items-center justify-between gap-5 bg-ink p-6 text-cream">
       <div className="max-w-[460px]">
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-brass">Free iPhone app</div>
-        <p className="mt-1.5 text-[17px] font-bold leading-[1.35]">Save every deal, compare scenarios and export a lender-ready PDF.</p>
-        <p className="mt-1 text-[13px] text-muted">Same math as this site. No account, works offline.</p>
+        <p className="mt-1.5 text-[17px] font-bold leading-[1.35]">Run any deal on your phone and share a lender-ready PDF.</p>
+        <p className="mt-1 text-[13px] text-muted">Same math as this site. No account needed.</p>
       </div>
       <a href={APP_STORE_URL} className="inline-flex items-center gap-2.5 bg-cream px-5 py-3 text-ink transition-transform hover:-translate-y-0.5">
         <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden>

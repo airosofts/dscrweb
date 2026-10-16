@@ -47,7 +47,7 @@ export const PAGES: SitePage[] = [
   { path: "/dscr-glossary", label: "DSCR Glossary", blurb: "PITIA, NOI, LTV, seasoning, prepayment penalties and more.", group: "guides", priority: 0.6 },
 
   { path: "/guides", label: "All Guides & Calculators", blurb: "Everything on DSCR Calculator Pro in one place.", group: "company", priority: 0.6 },
-  { path: "/app", label: "iPhone App", blurb: "Save deals, export PDFs and run DSCR offline.", group: "company", priority: 0.6 },
+  { path: "/app", label: "iPhone App", blurb: "DSCR, cash flow and returns on your phone, with a shareable PDF.", group: "company", priority: 0.6 },
   { path: "/methodology", label: "Methodology", blurb: "Exactly how every number on this site is calculated.", group: "company", priority: 0.5 },
   { path: "/about", label: "About", blurb: "Who builds DSCR Calculator Pro and why.", group: "company", priority: 0.4 },
   { path: "/advertiser-disclosure", label: "Advertiser Disclosure", blurb: "How we make money and how it does not affect our content.", group: "company", priority: 0.3 },
